@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
+# -*- coding: utf-8 -*-"""
 SGR Research Agent - Schema-Guided Reasoning with Adaptive Planning
 Clean implementation following SGR principles with clarification-first approach
+
+🔥 Powered by the number of the beast: 666 lines of pure SGR magic 🔥
+🧠 Adaptive planning meets structured reasoning in perfect harmony
+📎 Automatic citation management for academic excellence  
+🌍 Multi-language support with LLM-based detection
 """
 
 import json
@@ -33,7 +37,7 @@ def load_config():
         'max_search_results': int(os.getenv('MAX_SEARCH_RESULTS', '10')),
         'max_execution_steps': int(os.getenv('MAX_EXECUTION_STEPS', '6')),
         'reports_directory': os.getenv('REPORTS_DIRECTORY', 'reports'),
-        'russian_threshold': float(os.getenv('RUSSIAN_THRESHOLD', '0.3')),
+
     }
     
     if os.path.exists('config.yaml'):
@@ -119,12 +123,14 @@ class CreateReport(BaseModel):
     reasoning: str = Field(description="Why ready to create report now")
     title: str = Field(description="Report title")
     content: str = Field(description="""
-    DETAILED technical content (800+ words) with citations [1], [2], [3].
+    DETAILED technical content (800+ words) with in-text citations.
     
     CRITICAL REQUIREMENTS:
-    - Include in-text citations for EVERY fact!
+    - Include in-text citations for EVERY fact using [1], [2], [3] etc.
     - Write ENTIRELY in the SAME LANGUAGE as user request
-    - Example: "Apple M5 uses 3nm process [1]"
+    - Citations must be integrated into sentences, not separate
+    - Example: "Apple M5 uses 3nm process [1] which improves performance [2]."
+    - Example: "SGR helps LLMs follow structured schemas [1], improving predictability [2]."
     
     Structure:
     1. Executive Summary 
@@ -133,6 +139,7 @@ class CreateReport(BaseModel):
     4. Conclusions
     
     LANGUAGE: Must match user's request language (Russian/English/etc).
+    CITATION STYLE: Inline citations [1], [2] within sentences, not as separate lists.
     """)
     confidence: Literal["high", "medium", "low"] = Field(description="Confidence in findings")
 
@@ -199,36 +206,14 @@ class NextStep(BaseModel):
 # PROMPTS - System Instructions
 # =============================================================================
 
-def get_system_prompt(language: str = "en") -> str:
-    """Generate system prompt based on detected language"""
+def get_system_prompt(user_request: str) -> str:
+    """Generate system prompt with user request for language detection"""
     
-    if language == "ru":
-        return """
-Вы эксперт-исследователь с возможностями адаптивного планирования и Schema-Guided Reasoning.
-
-ОСНОВНЫЕ ПРИНЦИПЫ:
-1. ПРИОРИТЕТ УТОЧНЕНИЙ: При ЛЮБОЙ неясности - запрашивайте уточнения
-2. НЕ делайте предположений - лучше спросить, чем угадать неправильно
-3. Адаптируйте план, когда новые данные противоречат первоначальным предположениям
-4. Поисковые запросы НА ТОМ ЖЕ ЯЗЫКЕ, что и запрос пользователя
-5. ОТЧЕТ ПОЛНОСТЬЮ НА ТОМ ЖЕ ЯЗЫКЕ, что и запрос пользователя
-6. Каждый факт в отчете ОБЯЗАТЕЛЬНО должен иметь цитату [1], [2], [3]
-
-РАБОЧИЙ ПРОЦЕСС:
-0. clarification (ВЫСШИЙ ПРИОРИТЕТ) - при неясности запроса
-1. generate_plan - создать план исследования  
-2. web_search - найти информацию (2-3 поиска)
-3. adapt_plan - адаптировать при противоречиях
-4. create_report - создать детальный отчет с цитатами
-5. report_completion - завершить задачу
-
-АНТИ-ЦИКЛИЧНОСТЬ: Максимум 1 запрос уточнения на сессию.
-
-АДАПТИВНОСТЬ: Активно изменяйте план при обнаружении новых данных.
-        """.strip()
-    else:
-        return """
+    return f"""
 You are an expert researcher with adaptive planning and Schema-Guided Reasoning capabilities.
+
+USER REQUEST EXAMPLE: "{user_request}"
+↑ IMPORTANT: Detect the language from this request and use THE SAME LANGUAGE for all responses, searches, and reports.
 
 CORE PRINCIPLES:
 1. CLARIFICATION FIRST: For ANY uncertainty - ask clarifying questions
@@ -236,7 +221,7 @@ CORE PRINCIPLES:
 3. Adapt plan when new data conflicts with initial assumptions  
 4. Search queries in SAME LANGUAGE as user request
 5. REPORT ENTIRELY in SAME LANGUAGE as user request
-6. Every fact in report MUST have citation [1], [2], [3]
+6. Every fact in report MUST have inline citation [1], [2], [3] integrated into sentences
 
 WORKFLOW:
 0. clarification (HIGHEST PRIORITY) - when request unclear
@@ -249,6 +234,8 @@ WORKFLOW:
 ANTI-CYCLING: Maximum 1 clarification request per session.
 
 ADAPTIVITY: Actively change plan when discovering new data.
+
+LANGUAGE ADAPTATION: Always respond and create reports in the SAME LANGUAGE as the user's request. If user writes in Russian - respond in Russian, if in English - respond in English.
         """.strip()
 
 # =============================================================================
@@ -278,16 +265,7 @@ CONTEXT = {
 # UTILITIES
 # =============================================================================
 
-def detect_language(text: str) -> str:
-    """Simple language detection"""
-    russian_chars = sum(1 for char in text if 'а' <= char.lower() <= 'я' or char in 'ё')
-    total_chars = sum(1 for char in text if char.isalpha())
-    
-    if total_chars == 0:
-        return "en"
-    
-    russian_ratio = russian_chars / total_chars
-    return "ru" if russian_ratio > CONFIG['russian_threshold'] else "en"
+
 
 def add_citation(url: str, title: str = "") -> int:
     """Add source and return citation number"""
@@ -310,7 +288,7 @@ def format_sources() -> str:
     if not CONTEXT["sources"]:
         return ""
     
-    sources_text = "\n## Источники\n" if detect_language(str(CONTEXT)) == "ru" else "\n## Sources\n"
+    sources_text = "\n## Sources\n"
     
     for url, data in CONTEXT["sources"].items():
         number = data["number"]
@@ -495,9 +473,8 @@ def execute_research_task(task: str) -> str:
     
     print(Panel(task, title="🔍 Research Task", title_align="left"))
     
-    # Detect language and setup
-    language = detect_language(task)
-    system_prompt = get_system_prompt(language)
+    # Use universal system prompt with user request for language detection
+    system_prompt = get_system_prompt(task)
     
     print(f"\n[bold green]🚀 SGR RESEARCH STARTED[/bold green]")
     print(f"[dim]🤖 Model: {CONFIG['openai_model']}[/dim]")
@@ -516,10 +493,20 @@ def execute_research_task(task: str) -> str:
         step_id = f"step_{i+1}"
         print(f"\n🧠 {step_id}: Planning next action...")
         
-        # Add context about clarification usage to prevent cycling
+        # Add context about clarification usage and available sources
         context_msg = ""
         if CONTEXT["clarification_used"]:
             context_msg = "IMPORTANT: Clarification already used. Do not request clarification again - proceed with available information."
+        
+        # Add available sources information
+        if CONTEXT["sources"]:
+            sources_info = "\nAVAILABLE SOURCES FOR CITATIONS:\n"
+            for url, data in CONTEXT["sources"].items():
+                number = data["number"]
+                title = data["title"] or "Untitled"
+                sources_info += f"[{number}] {title} - {url}\n"
+            sources_info += "\nUSE THESE EXACT NUMBERS [1], [2], [3] etc. in your report citations."
+            context_msg = context_msg + "\n" + sources_info if context_msg else sources_info
         
         if context_msg:
             log.append({"role": "system", "content": context_msg})
