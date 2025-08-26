@@ -307,7 +307,7 @@ def format_sources() -> str:
     if not CONTEXT["sources"]:
         return ""
     
-    sources_text = "\n## Sources\n"
+    sources_text = "\n\n## Sources\n"
     
     for url, data in CONTEXT["sources"].items():
         number = data["number"]
