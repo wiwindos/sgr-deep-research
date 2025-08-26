@@ -14,7 +14,12 @@ import os
 import yaml
 from datetime import datetime
 from typing import List, Union, Literal, Optional, Dict, Any
+try:
+    from typing import Annotated  # Python 3.9+
+except ImportError:
+    from typing_extensions import Annotated  # Python 3.8
 from pydantic import BaseModel, Field
+from annotated_types import MinLen, MaxLen
 from openai import OpenAI
 from tavily import TavilyClient
 from rich.console import Console
@@ -88,17 +93,17 @@ class Clarification(BaseModel):
     """Ask clarifying questions when facing ambiguous requests"""
     tool: Literal["clarification"]
     reasoning: str = Field(description="Why clarification is needed")
-    unclear_terms: List[str] = Field(description="List of unclear terms or concepts")
-    questions: List[str] = Field(description="3-5 specific clarifying questions")
-    assumptions: List[str] = Field(description="Possible interpretations to verify")
+    unclear_terms: Annotated[List[str], MinLen(1), MaxLen(5)] = Field(description="List of unclear terms or concepts")
+    assumptions: Annotated[List[str], MinLen(2), MaxLen(4)] = Field(description="Possible interpretations to verify")
+    questions: Annotated[List[str], MinLen(3), MaxLen(5)] = Field(description="3-5 specific clarifying questions")
 
 class GeneratePlan(BaseModel):
     """Generate research plan based on clear user request"""
     tool: Literal["generate_plan"]
     reasoning: str = Field(description="Justification for research approach")
     research_goal: str = Field(description="Primary research objective")
-    planned_steps: List[str] = Field(description="List of 3-4 planned steps")
-    search_strategies: List[str] = Field(description="Information search strategies")
+    planned_steps: Annotated[List[str], MinLen(3), MaxLen(4)] = Field(description="List of 3-4 planned steps")
+    search_strategies: Annotated[List[str], MinLen(2), MaxLen(3)] = Field(description="Information search strategies")
 
 class WebSearch(BaseModel):
     """Search for information with credibility focus"""
@@ -114,32 +119,39 @@ class AdaptPlan(BaseModel):
     reasoning: str = Field(description="Why plan needs adaptation based on new data")
     original_goal: str = Field(description="Original research goal")
     new_goal: str = Field(description="Updated research goal")
-    plan_changes: List[str] = Field(description="Specific changes made to plan")
-    next_steps: List[str] = Field(description="Updated remaining steps")
+    plan_changes: Annotated[List[str], MinLen(1), MaxLen(3)] = Field(description="Specific changes made to plan")
+    next_steps: Annotated[List[str], MinLen(2), MaxLen(4)] = Field(description="Updated remaining steps")
 
 class CreateReport(BaseModel):
     """Create comprehensive research report with citations"""
     tool: Literal["create_report"]
     reasoning: str = Field(description="Why ready to create report now")
     title: str = Field(description="Report title")
+    user_request_language_reference: str = Field(
+        description="Copy of original user request to ensure language consistency"
+    )
     content: str = Field(description="""
     DETAILED technical content (800+ words) with in-text citations.
     
-    CRITICAL REQUIREMENTS:
+    🚨 CRITICAL LANGUAGE REQUIREMENT 🚨:
+    - WRITE ENTIRELY IN THE SAME LANGUAGE AS user_request_language_reference
+    - If user_request_language_reference is in Russian → WRITE IN RUSSIAN
+    - If user_request_language_reference is in English → WRITE IN ENGLISH  
+    - DO NOT mix languages - use ONLY the language from user_request_language_reference
+    
+    OTHER REQUIREMENTS:
     - Include in-text citations for EVERY fact using [1], [2], [3] etc.
-    - Write ENTIRELY in the SAME LANGUAGE as user request
     - Citations must be integrated into sentences, not separate
-    - Example: "Apple M5 uses 3nm process [1] which improves performance [2]."
-    - Example: "SGR helps LLMs follow structured schemas [1], improving predictability [2]."
+    - Example Russian: "Apple M5 использует 3нм процесс [1], что улучшает производительность [2]."
+    - Example English: "Apple M5 uses 3nm process [1] which improves performance [2]."
     
     Structure:
-    1. Executive Summary 
-    2. Technical Analysis (with citations)
-    3. Key Findings
-    4. Conclusions
+    1. Executive Summary / Исполнительное резюме
+    2. Technical Analysis / Технический анализ (with citations)
+    3. Key Findings / Ключевые выводы
+    4. Conclusions / Заключения
     
-    LANGUAGE: Must match user's request language (Russian/English/etc).
-    CITATION STYLE: Inline citations [1], [2] within sentences, not as separate lists.
+    🚨 LANGUAGE COMPLIANCE: Text MUST match user_request_language_reference language 100%
     """)
     confidence: Literal["high", "medium", "low"] = Field(description="Confidence in findings")
 
@@ -147,7 +159,7 @@ class ReportCompletion(BaseModel):
     """Complete research task"""
     tool: Literal["report_completion"]
     reasoning: str = Field(description="Why research is now complete")
-    completed_steps: List[str] = Field(description="Summary of completed steps")
+    completed_steps: Annotated[List[str], MinLen(1), MaxLen(5)] = Field(description="Summary of completed steps")
     status: Literal["completed", "failed"] = Field(description="Task completion status")
 
 # =============================================================================
@@ -157,22 +169,21 @@ class ReportCompletion(BaseModel):
 class NextStep(BaseModel):
     """SGR Core - Determines next reasoning step with adaptive planning"""
     
+    # Reasoning chain - step-by-step thinking process (helps stabilize model)
+    reasoning_steps: Annotated[List[str], MinLen(2), MaxLen(4)] = Field(
+        description="Step-by-step reasoning process leading to decision"
+    )
+    
     # Reasoning and state assessment
     current_situation: str = Field(description="Current research situation analysis")
     plan_status: str = Field(description="Status of current plan execution")
     
-    # Adaptive planning logic
-    new_data_conflicts_plan: bool = Field(
-        default=False,
-        description="Do recent findings conflict with current plan?"
-    )
-    
-    # Progress tracking  
-    searches_done: int = Field(default=0, description="Number of searches completed")
-    enough_data: bool = Field(default=False, description="Sufficient data for report?")
+    # Progress tracking (IMPORTANT: Use these to avoid infinite loops)
+    searches_done: int = Field(default=0, description="Number of searches completed (MAX 3-4 searches)")
+    enough_data: bool = Field(default=False, description="Sufficient data for report? (True after 2-3 searches)")
     
     # Next step planning
-    remaining_steps: List[str] = Field(description="1-3 remaining steps to complete task")
+    remaining_steps: Annotated[List[str], MinLen(1), MaxLen(3)] = Field(description="1-3 remaining steps to complete task")
     task_completed: bool = Field(description="Is the research task finished?")
     
     # Tool routing with clarification-first bias
@@ -188,9 +199,9 @@ class NextStep(BaseModel):
     
     1. If ANY uncertainty about user request → Clarification
     2. If no plan exists and request is clear → GeneratePlan  
-    3. If new findings conflict with plan → AdaptPlan
-    4. If need more information → WebSearch
-    5. If sufficient data (2+ searches) → CreateReport
+    3. If need to adapt research approach → AdaptPlan
+    4. If need more information AND searches_done < 3 → WebSearch
+    5. If searches_done >= 2 OR enough_data = True → CreateReport
     6. If report created → ReportCompletion
     
     CLARIFICATION TRIGGERS:
@@ -199,7 +210,10 @@ class NextStep(BaseModel):
     - Missing context for specialized domains
     - Any request requiring assumptions
     
-    ANTI-CYCLING: Max 1 clarification per session
+    ANTI-CYCLING RULES:
+    - Max 1 clarification per session
+    - Max 3-4 searches per session
+    - Create report after 2-3 searches regardless of completeness
     """)
 
 # =============================================================================
@@ -226,7 +240,12 @@ CORE PRINCIPLES:
 WORKFLOW:
 0. clarification (HIGHEST PRIORITY) - when request unclear
 1. generate_plan - create research plan
-2. web_search - gather information (2-3 searches)
+2. web_search - gather information (2-3 searches MAX)
+   - Use SPECIFIC terms and context in search queries
+   - For acronyms like "SGR", add context: "SGR Schema-Guided Reasoning"
+   - Use quotes for exact phrases: "Structured Output OpenAI"
+   - SEARCH QUERIES in SAME LANGUAGE as user request
+   - STOP after 2-3 searches and create report
 3. adapt_plan - adapt when conflicts found
 4. create_report - create detailed report with citations
 5. report_completion - complete task
@@ -358,8 +377,7 @@ def dispatch(cmd: BaseModel, context: Dict[str, Any]) -> Any:
         try:
             response = tavily.search(
                 query=cmd.query,
-                max_results=cmd.max_results,
-                include_answer=True
+                max_results=cmd.max_results
             )
             
             # Add citations
@@ -413,6 +431,15 @@ def dispatch(cmd: BaseModel, context: Dict[str, Any]) -> Any:
         }
     
     elif isinstance(cmd, CreateReport):
+        # Debug: Log CreateReport fields
+        print(f"📝 [bold cyan]CREATE REPORT FULL DEBUG:[/bold cyan]")
+        print(f"   🌍 Language Reference: '{cmd.user_request_language_reference}'")
+        print(f"   📊 Title: '{cmd.title}'")
+        print(f"   🔍 Reasoning: '{cmd.reasoning[:150]}...'")
+        print(f"   📈 Confidence: {cmd.confidence}")
+        print(f"   📄 Content Preview: '{cmd.content[:200]}...'")
+        print(f"   🌐 Content Language Detected: {'Russian' if 'Apple' in cmd.content and ('характеристик' in cmd.content or 'цен' in cmd.content) else 'English'}")
+        
         # Save report
         os.makedirs(CONFIG['reports_directory'], exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -498,6 +525,12 @@ def execute_research_task(task: str) -> str:
         if CONTEXT["clarification_used"]:
             context_msg = "IMPORTANT: Clarification already used. Do not request clarification again - proceed with available information."
         
+        # Add original user request for language reference and search count
+        searches_count = len(CONTEXT.get("searches", []))
+        user_request_info = f"\nORIGINAL USER REQUEST: '{task}'\n(Use this for language consistency in reports)"
+        search_count_info = f"\nSEARCHES COMPLETED: {searches_count} (MAX 3-4 searches before creating report)"
+        context_msg = context_msg + "\n" + user_request_info + search_count_info if context_msg else user_request_info + search_count_info
+        
         # Add available sources information
         if CONTEXT["sources"]:
             sources_info = "\nAVAILABLE SOURCES FOR CITATIONS:\n"
@@ -510,6 +543,8 @@ def execute_research_task(task: str) -> str:
         
         if context_msg:
             log.append({"role": "system", "content": context_msg})
+            # Debug: Show context being sent
+            print(f"[dim]🔧 Context: {context_msg[:150]}...[/dim]")
         
         try:
             completion = client.beta.chat.completions.parse(
@@ -525,6 +560,17 @@ def execute_research_task(task: str) -> str:
             if job is None:
                 print("[bold red]❌ Failed to parse LLM response[/bold red]")
                 break
+            
+            # Debug: Log ALL NextStep fields
+            print(f"🤖 [bold magenta]LLM RESPONSE DEBUG:[/bold magenta]")
+            print(f"   🧠 Reasoning Steps: {job.reasoning_steps}")
+            print(f"   📊 Current Situation: '{job.current_situation[:100]}...'")
+            print(f"   📋 Plan Status: '{job.plan_status[:100]}...'")
+            print(f"   🔍 Searches Done: {job.searches_done}")
+            print(f"   ✅ Enough Data: {job.enough_data}")
+            print(f"   📝 Remaining Steps: {job.remaining_steps}")
+            print(f"   🏁 Task Completed: {job.task_completed}")
+            print(f"   🔧 Tool: {job.function.tool}")
                 
         except Exception as e:
             print(f"[bold red]❌ LLM request error: {str(e)}[/bold red]")
@@ -573,8 +619,27 @@ def execute_research_task(task: str) -> str:
         # Execute tool
         result = dispatch(job.function, CONTEXT)
         
-        # Add result to log
-        result_text = result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)
+        # Add result to log - format search results better
+        if isinstance(job.function, WebSearch) and isinstance(result, dict):
+            # Format search results for better LLM understanding
+            formatted_result = f"Search Query: {result.get('query', '')}\n\n"
+            
+            # Include answer only if it exists (with include_answer=True)
+            if result.get('answer'):
+                formatted_result += f"AI Answer: {result.get('answer')}\n\n"
+            
+            formatted_result += "Search Results:\n"
+            for i, source_result in enumerate(result.get('results', [])[:5], 1):
+                citation_num = result.get('citation_numbers', [])[i-1] if i-1 < len(result.get('citation_numbers', [])) else i
+                title = source_result.get('title', 'Untitled')
+                url = source_result.get('url', '')
+                content = source_result.get('content', '')[:300] + "..." if source_result.get('content', '') else ""
+                formatted_result += f"[{citation_num}] {title}\n{url}\n{content}\n\n"
+            
+            result_text = formatted_result
+        else:
+            result_text = result if isinstance(result, str) else json.dumps(result, ensure_ascii=False)
+        
         log.append({"role": "tool", "content": result_text, "tool_call_id": step_id})
         
         print(f"  Result: {result_text[:100]}..." if len(result_text) > 100 else f"  Result: {result_text}")
