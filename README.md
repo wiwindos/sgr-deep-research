@@ -48,8 +48,8 @@ flowchart TD
 
 ```bash
 # 1. Клонируйте репозиторий
-git clone <repository-url>
-cd sgr-research-agent
+git clone https://github.com/vakovalskii/sgr-deep-research.git
+cd sgr-deep-research
 
 # 2. Установите зависимости
 pip install -r requirements.txt
