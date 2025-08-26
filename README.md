@@ -304,7 +304,7 @@ pip install openai tavily-python pydantic rich pyyaml
 ```
 
 ### Файлы проекта
-- `sgr-deep-research.py` - Основная версия SGR Research Agent (666 строк магии 😈)
+- `sgr-deep-research.py` - Основная версия SGR Research Agent (production-ready)
 - `config.yaml.example` - Шаблон конфигурации
 - `requirements.txt` - Список зависимостей Python
 - `example_report.md` - Пример сгенерированного отчета

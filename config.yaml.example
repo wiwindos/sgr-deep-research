@@ -1,4 +1,5 @@
 # SGR Research Agent - Configuration Template
+# Production-ready configuration for Schema-Guided Reasoning
 # Скопируйте этот файл в config.yaml и заполните своими API ключами
 
 # OpenAI Configuration

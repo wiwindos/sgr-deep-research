@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-"""
+"""
 SGR Research Agent - Schema-Guided Reasoning with Adaptive Planning
 Clean implementation following SGR principles with clarification-first approach
 
-🔥 Powered by the number of the beast: 666 lines of pure SGR magic 🔥
 🧠 Adaptive planning meets structured reasoning in perfect harmony
 📎 Automatic citation management for academic excellence  
 🌍 Multi-language support with LLM-based detection
+🔬 Production-ready research automation system
 """
 
 import json

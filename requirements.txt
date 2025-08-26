@@ -1,5 +1,5 @@
-# SGR Research Agent - Dependencies
-# Основные зависимости для работы системы
+# SGR Research Agent - Production Dependencies
+# Основные зависимости для работы системы Schema-Guided Reasoning
 
 # OpenAI API для работы с языковыми моделями
 openai>=1.0.0
