@@ -48,7 +48,7 @@ def fetch_youtube_transcript(url: str) -> dict:
         formatter = TextFormatter()
         transcript_text = formatter.format_transcript(transcript_data)
 
-        if original_transcript:  # Ensure meaningful content
+        if transcript_text and len(transcript_text.strip()) > 100:  # Ensure meaningful content
             return {
                 'url': url,
                 'full_content': transcript_text.strip(),
