@@ -30,8 +30,7 @@ def fetch_youtube_transcript(url: str) -> dict:
         if not video_id:
             return {'url': url, 'status': 'error', 'error': 'Invalid YouTube URL'}
 
-        ytt_api = YouTubeTranscriptApi()
-        transcript_list = ytt_api.list(video_id)
+        transcript_list = YouTubeTranscriptApi().list(video_id)
         original_transcript = None
         first_transcript = next(iter(transcript_list), None)
         if first_transcript is None:
