@@ -10,13 +10,19 @@ openai:
   max_tokens: 8000                     # Максимальное количество токенов
   temperature: 0.4                     # Температура генерации (0.0-1.0)
 
-# Tavily Search Configuration  
+# Tavily Search Configuration
 tavily:
   api_key: "your-tavily-api-key-here"  # Обязательно: Ваш Tavily API ключ
 
 # Search Settings
 search:
   max_results: 10                      # Максимальное количество результатов поиска
+
+# Scraping Settings
+scraping:
+  enabled: false                       # Включить скрейпинг полного текста найденных страниц
+  max_pages: 5                         # Максимум страниц для скрейпинга за поиск
+  content_limit: 1500                  # Лимит символов полного контента на источник
 
 # Execution Settings
 execution:

@@ -24,7 +24,8 @@ from openai import OpenAI
 from tavily import TavilyClient
 from rich.console import Console
 from rich.panel import Panel
-from rich.rule import Rule
+
+from scraping import fetch_page_content
 
 # =============================================================================
 # CONFIGURATION
@@ -42,7 +43,9 @@ def load_config():
         'max_search_results': int(os.getenv('MAX_SEARCH_RESULTS', '10')),
         'max_execution_steps': int(os.getenv('MAX_EXECUTION_STEPS', '6')),
         'reports_directory': os.getenv('REPORTS_DIRECTORY', 'reports'),
-
+        'scraping_enabled': os.getenv('SCRAPING_ENABLED', 'false').lower() == 'true',
+        'scraping_max_pages': int(os.getenv('SCRAPING_MAX_PAGES', '5')),
+        'scraping_content_limit': int(os.getenv('SCRAPING_CONTENT_LIMIT', '1500')),
     }
 
     if os.path.exists('config.yaml'):
@@ -64,6 +67,11 @@ def load_config():
 
                 if 'search' in yaml_config:
                     config['max_search_results'] = yaml_config['search'].get('max_results', config['max_search_results'])
+
+                if 'scraping' in yaml_config:
+                    config['scraping_enabled'] = yaml_config['scraping'].get('enabled', config['scraping_enabled'])
+                    config['scraping_max_pages'] = yaml_config['scraping'].get('max_pages', config['scraping_max_pages'])
+                    config['scraping_content_limit'] = yaml_config['scraping'].get('content_limit', config['scraping_content_limit'])
 
                 if 'execution' in yaml_config:
                     config['max_execution_steps'] = yaml_config['execution'].get('max_steps', config['max_execution_steps'])
@@ -112,6 +120,7 @@ class WebSearch(BaseModel):
     query: str = Field(description="Search query in same language as user request")
     max_results: int = Field(default=10, description="Maximum results (1-15)")
     plan_adapted: bool = Field(default=False, description="Is this search after plan adaptation?")
+    scrape_content: bool = Field(default_factory=lambda: CONFIG.get('scraping_enabled', False), description="Fetch full page content for deeper analysis")
 
 class AdaptPlan(BaseModel):
     """Adapt research plan based on new findings"""
@@ -245,6 +254,7 @@ WORKFLOW:
    - For acronyms like "SGR", add context: "SGR Schema-Guided Reasoning"
    - Use quotes for exact phrases: "Structured Output OpenAI"
    - SEARCH QUERIES in SAME LANGUAGE as user request
+   - scrape_content=True for deeper analysis (fetches full page content)
    - STOP after 2-3 searches and create report
 3. adapt_plan - adapt when conflicts found
 4. create_report - create detailed report with citations
@@ -374,26 +384,49 @@ def dispatch(cmd: BaseModel, context: Dict[str, Any]) -> Any:
     elif isinstance(cmd, WebSearch):
         print(f"🔍 [bold cyan]Search query:[/bold cyan] [white]'{cmd.query}'[/white]")
 
+        # Check if scraping should be enabled
+        should_scrape = CONFIG['scraping_enabled'] and cmd.scrape_content
+        if should_scrape:
+            print("📄 [dim]Scraping enabled - will fetch full content[/dim]")
+
         try:
             response = tavily.search(
                 query=cmd.query,
                 max_results=cmd.max_results
             )
 
-            # Add citations
+            # Add citations and optionally scrape content
             citation_numbers = []
-            for result in response.get('results', []):
+            scraped_content = {}
+
+            for i, result in enumerate(response.get('results', [])):
                 url = result.get('url', '')
                 title = result.get('title', '')
                 if url:
                     citation_num = add_citation(url, title)
                     citation_numbers.append(citation_num)
 
+                    # Scrape full content if enabled and within limits
+                    if should_scrape and i < CONFIG['scraping_max_pages']:
+                        print(f"   📄 Scraping [{citation_num}] {url[:50]}...")
+                        scrape_result = fetch_page_content(url)
+                        scraped_content[citation_num] = scrape_result
+
+                        # Log scraping status with different icons for YouTube
+                        if scrape_result['status'] == 'success':
+                            print(f"   ✅ [{citation_num}] {scrape_result.get('char_count', 0)} chars")
+                        elif scrape_result['status'] == 'error':
+                            print(f"   ❌ [{citation_num}] Error: {scrape_result.get('error', 'Unknown')[:50]}")
+                        else:
+                            print(f"   ⚠️ [{citation_num}] Empty content")
+
             search_result = {
                 "query": cmd.query,
                 "answer": response.get('answer', ''),
                 "results": response.get('results', []),
                 "citation_numbers": citation_numbers,
+                "scraped_content": scraped_content,
+                "scraping_enabled": should_scrape,
                 "timestamp": datetime.now().isoformat()
             }
 
@@ -402,6 +435,10 @@ def dispatch(cmd: BaseModel, context: Dict[str, Any]) -> Any:
             print(f"🔍 Found {len(citation_numbers)} sources")
             for i, (result, citation_num) in enumerate(zip(response.get('results', [])[:5], citation_numbers), 1):
                 print(f"   {i}. [{citation_num}] {result.get('url', '')}")
+
+            if should_scrape:
+                successful_scrapes = len([c for c in scraped_content.values() if c['status'] == 'success'])
+                print(f"📄 Scraped: {successful_scrapes}/{len(scraped_content)} pages")
 
             return search_result
 
@@ -629,12 +666,29 @@ def execute_research_task(task: str) -> str:
                 formatted_result += f"AI Answer: {result.get('answer')}\n\n"
 
             formatted_result += "Search Results:\n"
+            scraped_content = result.get('scraped_content', {})
+
             for i, source_result in enumerate(result.get('results', [])[:5], 1):
                 citation_num = result.get('citation_numbers', [])[i-1] if i-1 < len(result.get('citation_numbers', [])) else i
                 title = source_result.get('title', 'Untitled')
                 url = source_result.get('url', '')
-                content = source_result.get('content', '')[:300] + "..." if source_result.get('content', '') else ""
-                formatted_result += f"[{citation_num}] {title}\n{url}\n{content}\n\n"
+
+                # Use scraped content if available, otherwise fallback to snippet
+                if citation_num in scraped_content and scraped_content[citation_num]['status'] == 'success':
+                    full_content = scraped_content[citation_num]['full_content']
+                    # Limit content size for LLM using configurable limit
+                    content_limit = CONFIG['scraping_content_limit']
+                    content = full_content[:content_limit] + "..." if len(full_content) > content_limit else full_content
+                    formatted_result += f"[{citation_num}] {title}\n{url}\n\n**Full Content (Markdown):**\n{content}\n\n"
+                else:
+                    # Fallback to original snippet
+                    content = source_result.get('content', '')[:300] + "..." if source_result.get('content', '') else ""
+                    formatted_result += f"[{citation_num}] {title}\n{url}\n{content}\n\n"
+
+            # Add scraping summary if enabled
+            if result.get('scraping_enabled'):
+                successful_scrapes = len([c for c in scraped_content.values() if c['status'] == 'success'])
+                formatted_result += f"Scraping Summary: {successful_scrapes}/{len(scraped_content)} pages successfully scraped\n"
 
             result_text = formatted_result
         else:
