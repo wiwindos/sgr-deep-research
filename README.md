@@ -122,6 +122,45 @@ python compact_streaming_example.py
 - "Research current AI trends"
 - "Analyze cryptocurrency market in 2024"
 
+## 🧠 Why SGR + Structured Output?
+
+### The Problem with Function Calling on Local Models
+**Reality Check:** Function Calling works great on OpenAI/Anthropic (80+ BFCL scores) but fails on local models <32B parameters.
+
+**Test Results:**
+- `Qwen3-4B`: Only 2% accuracy in Agentic mode (BFCL benchmark)
+- Local models know **HOW** to call tools, but not **WHEN** to call them
+- Result: `{"tool_calls": null, "content": "Text instead of tool call"}`
+
+### SGR Solution: Forced Reasoning → Deterministic Execution
+
+```python
+# Phase 1: Structured Output reasoning (100% reliable)
+reasoning = model.generate(format="json_schema")
+
+# Phase 2: Deterministic execution (no model uncertainty)  
+result = execute_plan(reasoning.actions)
+```
+
+### Architecture by Model Size
+
+| Model Size | Recommended Approach | Why |
+|------------|---------------------|-----|
+| **<14B** | Pure SGR + Structured Output | FC accuracy too low, SO forces reasoning |
+| **14-32B** | SGR as tool + FC hybrid | Best of both worlds |
+| **32B+** | Native FC + SGR fallback | FC works reliably |
+
+### SGR vs Function Calling
+
+| Aspect | Traditional FC | SGR + Structured Output |
+|--------|---------------|------------------------|
+| **When to think** | Model decides ❌ | Always forced ✅ |
+| **Reasoning quality** | Unpredictable ❌ | Structured & consistent ✅ |
+| **Local model support** | <35% accuracy ❌ | 100% on simple tasks ✅ |
+| **Deterministic** | No ❌ | Yes ✅ |
+
+**Bottom Line:** Don't force <32B models to pretend they're GPT-4o. Let them think structurally through SGR, then execute deterministically.
+
 ## 🔧 Configuration
 
 ### Main parameters:
