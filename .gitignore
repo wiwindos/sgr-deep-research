@@ -4,6 +4,7 @@
 config.yaml
 *.env
 .env*
+venv/
 secrets.yaml
 secrets.json
 config.yaml.bak
@@ -333,3 +334,6 @@ personal_notes.md
 
 # ВАЖНО: config.yaml.example должен быть в репозитории как шаблон
 !config.yaml.example
+
+# Conversation logs for debugging
+logs/
