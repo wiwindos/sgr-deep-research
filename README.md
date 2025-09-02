@@ -1,5 +1,7 @@
 # 🧠 SGR Deep Research - Schema-Guided Reasoning System
 
+https://github.com/user-attachments/assets/a5e34116-7853-43c2-ba93-2db811b8584a
+
 Automated research system using Schema-Guided Reasoning (SGR). Two versions available: classic and enhanced streaming.
 
 ## 📁 Project Structure
