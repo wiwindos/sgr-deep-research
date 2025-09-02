@@ -1,0 +1,19 @@
+services:
+  sgr-app:
+    build:
+      context: src
+      dockerfile: Dockerfile
+    container_name: sgr-deep-research
+    restart: unless-stopped
+    
+    # Volumes для конфигурации и логов (при необходимости)
+    volumes:
+      - ./src:/app  # Приложение
+    #   - ./config:/app/config:ro  # Конфигурационные файлы
+    #   - ./logs:/app/logs        # Логи приложения
+    
+    # Переменные окружения
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    
