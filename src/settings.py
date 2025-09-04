@@ -70,18 +70,10 @@ class ServerConfig(BaseModel):
 def get_config(argv=None) -> ServerConfig:
     parser = argparse.ArgumentParser(description="SGR Deep Research Server")
     parser.add_argument(
-        "--host",
-        type=str,
-        dest="host",
-        default=os.environ.get("HOST", "0.0.0.0"),
-        help="Хост для прослушивания"
+        "--host", type=str, dest="host", default=os.environ.get("HOST", "0.0.0.0"), help="Хост для прослушивания"
     )
     parser.add_argument(
-        "--port",
-        type=int,
-        dest="port",
-        default=int(os.environ.get("PORT", 8010)),
-        help="Порт для прослушивания"
+        "--port", type=int, dest="port", default=int(os.environ.get("PORT", 8010)), help="Порт для прослушивания"
     )
     parser.add_argument(
         "--app_config",
@@ -89,13 +81,11 @@ def get_config(argv=None) -> ServerConfig:
         required=False,
         type=str,
         default=os.environ.get("APP_CONFIG", "config.yaml"),
-        help="Путь к файлу конфигурации YAML"
+        help="Путь к файлу конфигурации YAML",
     )
 
     args = parser.parse_args(argv)
 
     return ServerConfig(
-        host=args.host,
-        port=args.port,
-        app_config=AppConfig.model_validate(dict(EnvYAML(args.app_config_path)))
+        host=args.host, port=args.port, app_config=AppConfig.model_validate(dict(EnvYAML(args.app_config_path)))
     )

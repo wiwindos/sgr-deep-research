@@ -4,23 +4,23 @@ import json
 import logging
 import os
 from datetime import datetime
-from typing import Dict, Any, Type, ClassVar, TypeVar, Callable
-from typing import TYPE_CHECKING
-
-from tavily import TavilyClient
+from typing import TYPE_CHECKING, ClassVar, Type
 
 from core.models import SourceData
+from tavily import TavilyClient
 
 if TYPE_CHECKING:
     from core.models import ResearchContext
-from pydantic import BaseModel, Field, create_model
 from core.reasoning_schemas import (
-    Clarification,
-    GeneratePlan,
-    WebSearch,
     AdaptPlan,
-    ReportCompletion, NextStep, CreateReport
+    Clarification,
+    CreateReport,
+    GeneratePlan,
+    NextStep,
+    ReportCompletion,
+    WebSearch,
 )
+from pydantic import Field, create_model
 from settings import get_config
 
 logger = logging.getLogger(__name__)
@@ -39,7 +39,6 @@ class ToolCallMixin:
 
 
 class ClarificationTool(ToolCallMixin, Clarification):
-
     def __call__(self, context: ResearchContext) -> str:
         """Handle clarification requests when facing ambiguous user requests"""
 
@@ -64,7 +63,6 @@ class ClarificationTool(ToolCallMixin, Clarification):
 
 
 class GeneratePlanTool(ToolCallMixin, GeneratePlan):
-
     def __call__(self, context: ResearchContext) -> str:
         """Generate and store research plan based on clear user request"""
         context.plan = self
@@ -75,11 +73,15 @@ class GeneratePlanTool(ToolCallMixin, GeneratePlan):
         for i, step in enumerate(self.planned_steps, 1):
             logger.info(f"   {i}. {step}")
 
-        return self.model_dump_json(indent=2, exclude={"reasoning", })
+        return self.model_dump_json(
+            indent=2,
+            exclude={
+                "reasoning",
+            },
+        )
 
 
 class AdaptPlanTool(ToolCallMixin, AdaptPlan):
-
     def __call__(self, context: ResearchContext) -> str:
         """Adapt research plan based on new findings"""
         if context.plan:
@@ -91,7 +93,12 @@ class AdaptPlanTool(ToolCallMixin, AdaptPlan):
             logger.info(f"   • {change}")
         logger.info(f"🎯 New goal {self.new_goal}")
 
-        return self.model_dump_json(indent=2, exclude={"reasoning", })
+        return self.model_dump_json(
+            indent=2,
+            exclude={
+                "reasoning",
+            },
+        )
 
 
 class CreateReportTool(ToolCallMixin, CreateReport):
@@ -107,7 +114,7 @@ class CreateReportTool(ToolCallMixin, CreateReport):
         reports_dir = config.execution.reports_dir
         os.makedirs(reports_dir, exist_ok=True)
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_title = "".join(c for c in self.title if c.isalnum() or c in (' ', '-', '_'))[:50]
+        safe_title = "".join(c for c in self.title if c.isalnum() or c in (" ", "-", "_"))[:50]
         filename = f"{timestamp}_{safe_title}.md"
         filepath = os.path.join(reports_dir, filename)
 
@@ -117,7 +124,7 @@ class CreateReportTool(ToolCallMixin, CreateReport):
         full_content += self.content + "\n\n"
         full_content += "\n".join(["- " + str(source) for source in context.sources.values()])
 
-        with open(filepath, 'w', encoding='utf-8') as f:
+        with open(filepath, "w", encoding="utf-8") as f:
             f.write(full_content)
 
         report = {
@@ -127,7 +134,7 @@ class CreateReportTool(ToolCallMixin, CreateReport):
             "sources_count": len(context.sources),
             "word_count": len(self.content.split()),
             "filepath": filepath,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         logger.info(f"📄 Report Created: {self.title}")
@@ -139,7 +146,6 @@ class CreateReportTool(ToolCallMixin, CreateReport):
 
 
 class ReportCompletionTool(ToolCallMixin, ReportCompletion):
-
     def __call__(self, context: ResearchContext) -> str:
         """Complete research task"""
 
@@ -151,16 +157,15 @@ class ReportCompletionTool(ToolCallMixin, ReportCompletion):
             for step in self.completed_steps:
                 logger.info(f"   • {step}")
 
-        return json.dumps({
-            "tool": "report_completion",
-            "status": self.status,
-            "completed_steps": self.completed_steps
-        }, indent=2, ensure_ascii=False)
+        return json.dumps(
+            {"tool": "report_completion", "status": self.status, "completed_steps": self.completed_steps},
+            indent=2,
+            ensure_ascii=False,
+        )
 
 
 # ToDo: Looks like some service logic here, need to be divided
 class WebSearchTool(ToolCallMixin, WebSearch):
-
     def __call__(self, context: ResearchContext) -> str:
         """Execute web search with optional content scraping"""
 
@@ -172,33 +177,30 @@ class WebSearchTool(ToolCallMixin, WebSearch):
             logger.info("📄 Scraping enabled - will fetch full content")
 
         response = tavily.search(
-            query=self.query,
-            max_results=self.max_results,
-            include_answer=True,
-            include_raw_content=True
+            query=self.query, max_results=self.max_results, include_answer=True, include_raw_content=True
         )
         # Add citations and optionally scrape content
         citations = []
 
-        for i, result in enumerate(response.get('results', []), len(context.sources) + 1):
-            url = result.get('url', '')
-            title = result.get('title', '')
+        for i, result in enumerate(response.get("results", []), len(context.sources) + 1):
+            url = result.get("url", "")
+            title = result.get("title", "")
             if url:
-                src = SourceData(number=i, title=title, url=url, snippet=result.get('content', ''))
+                src = SourceData(number=i, title=title, url=url, snippet=result.get("content", ""))
                 # Scrape full content if enabled and within limits
                 if should_scrape and i < config.scraping.max_pages:
                     logger.info(f"   📄 Scraping [{i}] {url[:50]}...")
-                    src.full_content = result.get('raw_content', '')
+                    src.full_content = result.get("raw_content", "")
                     src.char_count = len(src.full_content) or 0
                 citations.append(src)
                 context.sources[url] = src
 
         search_result = {
             "query": self.query,
-            "answer": response.get('answer', ''),
+            "answer": response.get("answer", ""),
             "citations": citations,
             "scraping_enabled": should_scrape,
-            "timestamp": datetime.now().isoformat()
+            "timestamp": datetime.now().isoformat(),
         }
 
         context.searches.append(search_result)
@@ -210,14 +212,14 @@ class WebSearchTool(ToolCallMixin, WebSearch):
         formatted_result = f"Search Query: {search_result.get('query', '')}\n\n"
 
         # Include answer only if it exists (with include_answer=True)
-        if search_result.get('answer'):
+        if search_result.get("answer"):
             formatted_result += f"AI Answer: {search_result.get('answer')}\n\n"
 
         formatted_result += "Search Results:\n\n"
 
         for res in citations[:5]:
             if res.full_content:
-                content = res.full_content[:config.scraping.content_limit]
+                content = res.full_content[: config.scraping.content_limit]
                 formatted_result += f"{str(res)}\n\n**Full Content (Markdown):**\n{content}\n\n"
             else:
                 formatted_result += f"{str(res)}\n{res.snippet}\n\n"
@@ -251,11 +253,11 @@ ANTI-CYCLING RULES:
 
 class NextStepToolStub(NextStep, ToolCallMixin):
     """Stub class for correct autocomplete"""
+
     pass
 
 
 class NextStepToolsBuilder:
-
     tools: ClassVar[list[Type[ToolCallMixin]]] = [
         ClarificationTool,
         GeneratePlanTool,
@@ -273,8 +275,9 @@ class NextStepToolsBuilder:
         if len(enabled_tools_types) == 1:
             return enabled_tools_types[0]
 
-        from functools import reduce
         import operator
+        from functools import reduce
+
         return reduce(operator.or_, enabled_tools_types)
 
     @classmethod
@@ -282,5 +285,5 @@ class NextStepToolsBuilder:
         return create_model(
             "NextStepTools",
             __base__=NextStepToolStub,
-            function=(cls._create_tool_types_union(exclude), Field(description=TOOL_FUNCTION_PROMPT))
+            function=(cls._create_tool_types_union(exclude), Field(description=TOOL_FUNCTION_PROMPT)),
         )

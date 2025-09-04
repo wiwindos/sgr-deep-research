@@ -1,8 +1,8 @@
 import asyncio
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field
-from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from core.reasoning_schemas import NextStep
@@ -10,6 +10,7 @@ if TYPE_CHECKING:
 
 class SourceData(BaseModel):
     """Data about a research source"""
+
     number: int = Field(description="Citation number")
     title: str | None = Field(default="Untitled", description="Page title")
     url: str = Field(description="Source URL")
@@ -30,7 +31,7 @@ class ResearchContext:
     """
 
     def __init__(
-            self,
+        self,
     ):
         self.current_state: NextStep | None = None
 

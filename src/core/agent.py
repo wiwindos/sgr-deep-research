@@ -2,22 +2,21 @@ import logging
 import uuid
 from typing import Type
 
-from openai import AsyncOpenAI
-
 from core.models import AgentStatesEnum, ResearchContext
-from core.reasoning_schemas import get_system_prompt, ReportCompletion, Clarification, CreateReport
+from core.reasoning_schemas import Clarification, CreateReport, ReportCompletion, get_system_prompt
 from core.stream import OpenAIStreamingGenerator
-from core.tools import NextStepToolsBuilder, ClarificationTool, WebSearchTool, NextStepToolStub
+from core.tools import ClarificationTool, NextStepToolsBuilder, NextStepToolStub, WebSearchTool
+from openai import AsyncOpenAI
 from settings import get_config
 
 # Настройка базового логирования
 logging.basicConfig(
     level=logging.INFO,
-    encoding='utf-8',
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    encoding="utf-8",
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     handlers=[
         logging.StreamHandler()  # Вывод в консоль
-    ]
+    ],
 )
 
 config = get_config().app_config
@@ -25,7 +24,6 @@ logger = logging.getLogger(__name__)
 
 
 class SGRResearchAgent:
-
     def __init__(self, task: str, max_clarifications: int = 3, max_searches: int = 4):
         self.id = uuid.uuid4()
         self.task = task
@@ -49,28 +47,23 @@ class SGRResearchAgent:
 
     def _prepare_context(self) -> list[dict]:
         """Prepare conversation context with system prompt and current state"""
-        system_prompt = get_system_prompt(
-            user_request=self.task,
-            sources=list(self._context.sources.values())
-        )
-        conversation = [
-            {"role": "system", "content": system_prompt}
-        ]
+        system_prompt = get_system_prompt(user_request=self.task, sources=list(self._context.sources.values()))
+        conversation = [{"role": "system", "content": system_prompt}]
         conversation.extend(self.conversation)
         return conversation
 
-    async def _openai_streaming_request(self, messages: list[dict],
-                                        response_format: Type[NextStepToolStub]) -> NextStepToolStub | None:
+    async def _openai_streaming_request(
+        self, messages: list[dict], response_format: Type[NextStepToolStub]
+    ) -> NextStepToolStub | None:
         async with self.openai_client.chat.completions.stream(
-                model=config.openai.model,
-                response_format=response_format,
-                messages=messages,
-                max_tokens=config.openai.max_tokens,
-                temperature=config.openai.temperature,
+            model=config.openai.model,
+            response_format=response_format,
+            messages=messages,
+            max_tokens=config.openai.max_tokens,
+            temperature=config.openai.temperature,
         ) as stream:
             async for event in stream:
                 if event.type == "chunk":
-
                     content = event.chunk.choices[0].delta.content
                     self.streaming_generator.add_chunk(content)
                     if event.chunk.choices[0].finish_reason is not None:
@@ -79,9 +72,7 @@ class SGRResearchAgent:
 
     async def provide_clarification(self, clarifications: str):
         """Receive clarification from external source (e.g. user input)"""
-        self.conversation.append(
-            {"role": "user", "content": f"CLARIFICATIONS: {clarifications}"}
-        )
+        self.conversation.append({"role": "user", "content": f"CLARIFICATIONS: {clarifications}"})
         self._context.clarifications_used += 1
         self._context.clarification_received.set()
         self.state = AgentStatesEnum.RESEARCHING
@@ -89,10 +80,11 @@ class SGRResearchAgent:
 
     def _log_step(self, result: NextStepToolStub):
         next_step = result.remaining_steps[0] if result.remaining_steps else "Completing"
-        reasoning = result.function.reasoning[:500] if hasattr(result.function, 'reasoning') else "No reasoning"
-        tool_name = result.function.tool if hasattr(result.function, 'tool') else str(type(result.function).__name__)
-        sources = '\n         '.join([str(source) for source in self._context.sources.values()])
-        logger.info(f"""
+        reasoning = result.function.reasoning[:500] if hasattr(result.function, "reasoning") else "No reasoning"
+        tool_name = result.function.tool if hasattr(result.function, "tool") else str(type(result.function).__name__)
+        sources = "\n         ".join([str(source) for source in self._context.sources.values()])
+        logger.info(
+            f"""
 ###############################################
 🤖 LLM RESPONSE DEBUG:
    🧠 Reasoning Steps: {result.reasoning_steps}
@@ -107,17 +99,23 @@ class SGRResearchAgent:
    🏁 Task Completed: {result.task_completed}
    🔧 Tool: {result.function}
    
-   
    ➡️ Next Step: {next_step} using {tool_name}
    💭 Reasoning: {reasoning}...
-###############################################""")
+###############################################"""
+        )
 
-    async def execute(self, ):
+    async def execute(
+        self,
+    ):
         """Execute research task using SGR"""
-        self.conversation.extend([
-            {"role": "user",
-             "content": f"\nORIGINAL USER REQUEST: '{self.task}'\n(Use this for language consistency in reports)"}
-        ])
+        self.conversation.extend(
+            [
+                {
+                    "role": "user",
+                    "content": f"\nORIGINAL USER REQUEST: '{self.task}'\n(Use this for language consistency in reports)",
+                }
+            ]
+        )
         # Execute reasoning steps
         try:
             for i in range(config.execution.max_steps):
@@ -126,8 +124,7 @@ class SGRResearchAgent:
                 try:
                     response_format = self._prepare_tools()
                     result: NextStepToolStub = await self._openai_streaming_request(
-                        messages=self._prepare_context(),
-                        response_format=response_format
+                        messages=self._prepare_context(), response_format=response_format
                     )
                     if result is None:
                         logger.error("Failed to parse LLM response")
@@ -140,22 +137,24 @@ class SGRResearchAgent:
                     break
 
                 next_step = result.remaining_steps[0] if result.remaining_steps else "Completing"
-                self.conversation.append({
-                    "role": "assistant",
-                    "content": next_step,
-                    "tool_calls": [{
-                        "type": "function",
-                        "id": str(step_id),
-                        "function": {
-                            "name": result.function.tool,
-                            "arguments": result.function.model_dump_json()
-                        }
-                    }]
-                })
+                self.conversation.append(
+                    {
+                        "role": "assistant",
+                        "content": next_step,
+                        "tool_calls": [
+                            {
+                                "type": "function",
+                                "id": str(step_id),
+                                "function": {
+                                    "name": result.function.tool,
+                                    "arguments": result.function.model_dump_json(),
+                                },
+                            }
+                        ],
+                    }
+                )
                 self.streaming_generator.add_tool_call(
-                    str(step_id),
-                    result.function.tool,
-                    result.function.model_dump_json()
+                    str(step_id), result.function.tool, result.function.model_dump_json()
                 )
 
                 tool_call_result = result.function(self._context)  # noqa

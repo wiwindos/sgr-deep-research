@@ -2,19 +2,22 @@
 OpenAI-совместимые модели для API endpoints.
 """
 
-from typing import List, Dict, Literal, Any
+from typing import Any, Dict, List, Literal
 from uuid import UUID
+
 from pydantic import BaseModel, Field
 
 
 class ChatMessage(BaseModel):
     """Сообщение в чате."""
+
     role: Literal["system", "user", "assistant", "tool"] = Field(description="Роль отправителя")
     content: str = Field(description="Содержимое сообщения")
 
 
 class ChatCompletionRequest(BaseModel):
     """Запрос на создание chat completion."""
+
     model: str = Field(default="sgr-research", description="Модель для использования")
     messages: List[ChatMessage] = Field(description="Список сообщений")
     stream: bool = Field(default=True, description="Включить потоковый режим")
@@ -24,6 +27,7 @@ class ChatCompletionRequest(BaseModel):
 
 class ChatCompletionChoice(BaseModel):
     """Выбор в ответе chat completion."""
+
     index: int = Field(description="Индекс выбора")
     message: ChatMessage = Field(description="Сообщение ответа")
     finish_reason: str | None = Field(description="Причина завершения")
@@ -31,6 +35,7 @@ class ChatCompletionChoice(BaseModel):
 
 class ChatCompletionResponse(BaseModel):
     """Ответ chat completion (не потоковый)."""
+
     id: str = Field(description="ID ответа")
     object: Literal["chat.completion"] = "chat.completion"
     created: int = Field(description="Время создания")
