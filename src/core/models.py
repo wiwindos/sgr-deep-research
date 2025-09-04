@@ -2,6 +2,10 @@ import asyncio
 from enum import Enum
 
 from pydantic import BaseModel, Field
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from core.reasoning_schemas import NextStep
 
 
 class SourceData(BaseModel):
@@ -28,22 +32,15 @@ class ResearchContext:
     def __init__(
             self,
     ):
-        # ToDo: add plan model. But not sure if plan really needed
-        self.plan: str = ""
+        self.current_state: NextStep | None = None
+
         self.searches: list[dict] = []
         self.sources: dict[str, SourceData] = {}
-        self.citation_counter: int = 0
-        self.clarifications: str = ""
-        self.clarification_used: bool = False
-        self.clarification_received = asyncio.Event()
 
-    def clear(self) -> None:
-        """Clear all context data."""
-        self.plan = None
-        self.searches.clear()
-        self.sources.clear()
-        self.citation_counter = 0
-        self.clarification_used = False
+        self.searches_used: int = 0
+
+        self.clarifications_used: int = 0
+        self.clarification_received = asyncio.Event()
 
 
 class AgentStatesEnum(str, Enum):

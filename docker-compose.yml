@@ -5,15 +5,40 @@ services:
       dockerfile: Dockerfile
     container_name: sgr-deep-research
     restart: unless-stopped
-    
-    # Volumes для конфигурации и логов (при необходимости)
+
+    ports:
+      - "8010:8010"
     volumes:
       - ./src:/app  # Приложение
     #   - ./config:/app/config:ro  # Конфигурационные файлы
     #   - ./logs:/app/logs        # Логи приложения
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://sgr-app:8010/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     
     # Переменные окружения
     environment:
       - PYTHONUNBUFFERED=1
       - PYTHONDONTWRITEBYTECODE=1
     
+    # Настройка логирования
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    # Ограничения ресурсов
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
+        reservations:
+          memory: 256M
+          cpus: '0.25'

@@ -1,5 +1,6 @@
 from typing import Literal
 
+from core.models import SourceData
 from settings import get_config
 from pydantic import BaseModel, Field
 
@@ -131,11 +132,6 @@ class NextStep(BaseModel):
     # Reasoning and state assessment
     current_situation: str = Field(description="Current research situation analysis")
     plan_status: str = Field(description="Status of current plan execution")
-
-    # Progress tracking (IMPORTANT: Use these to avoid infinite loops)
-    searches_done: int = Field(
-        default=0, description="Number of searches completed (MAX 3-4 searches)"
-    )
     enough_data: bool = Field(
         default=False,
         description="Sufficient data for report? (True after 2-3 searches)",
@@ -180,8 +176,11 @@ class NextStep(BaseModel):
     )
 
 
-def get_system_prompt(user_request: str) -> str:
+def get_system_prompt(user_request: str, sources: list[SourceData]) -> str:
     """Generate system prompt with user request for language detection"""
+    sources_formatted = "\n".join(
+        [str(source) for source in sources]
+    )
 
     return f"""
 You are an expert researcher with adaptive planning and Schema-Guided Reasoning capabilities.
@@ -217,4 +216,9 @@ ADAPTIVITY: Actively change plan when discovering new data.
 
 LANGUAGE ADAPTATION: Always respond and create reports in the SAME LANGUAGE as the user's request. 
 If user writes in Russian - respond in Russian, if in English - respond in English.
+
+FULL LIST OF AVAILABLE SOURCES FOR CITATIONS:
+{sources_formatted}
+
+USE THESE EXACT NUMBERS [1], [2], [3] etc. in your report citations."
         """.strip()

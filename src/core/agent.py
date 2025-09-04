@@ -1,16 +1,19 @@
 import logging
 import uuid
+from typing import Type
+
+from openai import AsyncOpenAI
 
 from core.models import AgentStatesEnum, ResearchContext
 from core.reasoning_schemas import get_system_prompt, ReportCompletion, Clarification, CreateReport
-from openai import AsyncOpenAI
-
-from core.tools import NextStepTools
+from core.stream import OpenAIStreamingGenerator
+from core.tools import NextStepToolsBuilder, ClarificationTool, WebSearchTool, NextStepToolStub
 from settings import get_config
 
 # Настройка базового логирования
 logging.basicConfig(
     level=logging.INFO,
+    encoding='utf-8',
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.StreamHandler()  # Вывод в консоль
@@ -21,156 +24,177 @@ config = get_config().app_config
 logger = logging.getLogger(__name__)
 
 
-class SGRAgent:
+class SGRResearchAgent:
 
-    def __init__(self):
+    def __init__(self, task: str, max_clarifications: int = 3, max_searches: int = 4):
         self.id = uuid.uuid4()
+        self.task = task
+
         self._context = ResearchContext()
+        self.conversation = []
+        self.max_clarifications = max_clarifications
+        self.max_searches = max_searches
         self.openai_client = AsyncOpenAI(base_url=config.openai.base_url, api_key=config.openai.api_key)
         self.state = AgentStatesEnum.INITED
+        self.streaming_generator = OpenAIStreamingGenerator(model=f"sgr_agent_{self.id}")
 
-    # ToDo: wip
-    # def execute(self, research_request: str):
-    #     if not research_request:
-    #         raise ValueError("Research request cannot be empty")
-    #     while True:
-    #         execute_research_task()
+    def _prepare_tools(self) -> Type[NextStepToolStub]:
+        """Prepare tool classes with current context limits"""
+        to_exclude = []
+        if self._context.clarifications_used >= self.max_clarifications:
+            to_exclude.append(ClarificationTool)
+        if self._context.searches_used >= self.max_searches:
+            to_exclude.append(WebSearchTool)
+        return NextStepToolsBuilder.build_NextStepTools(exclude=to_exclude)
 
-    async def _prepare_context(self, task: str) -> str:
-        context_msg = ""
-        if self._context.clarification_used:
-            context_msg = ("IMPORTANT: Clarification already used. "
-                           "Do not request clarification again - proceed with available information.")
+    def _prepare_context(self) -> list[dict]:
+        """Prepare conversation context with system prompt and current state"""
+        system_prompt = get_system_prompt(
+            user_request=self.task,
+            sources=list(self._context.sources.values())
+        )
+        conversation = [
+            {"role": "system", "content": system_prompt}
+        ]
+        conversation.extend(self.conversation)
+        return conversation
 
-        # ToDo: maybe this part of logic should be implemented in code?
-        # ToDo: is it really necessary to attach the original request in every subsequent message?
-        user_request_info = f"\nORIGINAL USER REQUEST: '{task}'\n(Use this for language consistency in reports)"
-        search_count_info = f"\nSEARCHES COMPLETED: {len(self._context.searches)} (MAX 3-4 searches before creating report)"
-        context_msg = (context_msg + "\n" + user_request_info + search_count_info).strip()
+    async def _openai_streaming_request(self, messages: list[dict],
+                                        response_format: Type[NextStepToolStub]) -> NextStepToolStub | None:
+        async with self.openai_client.chat.completions.stream(
+                model=config.openai.model,
+                response_format=response_format,
+                messages=messages,
+                max_tokens=config.openai.max_tokens,
+                temperature=config.openai.temperature,
+        ) as stream:
+            async for event in stream:
+                if event.type == "chunk":
 
-        # Add available sources information
-        if self._context.sources:
-            sources_info = ("\nAVAILABLE SOURCES FOR CITATIONS:\n" +
-                            "\n".join([str(source) for source in self._context.sources.values()]) +
-                            "\nUSE THESE EXACT NUMBERS [1], [2], [3] etc. in your report citations."
-                            )
-            context_msg = context_msg + "\n" + sources_info
-        return context_msg
+                    content = event.chunk.choices[0].delta.content
+                    self.streaming_generator.add_chunk(content)
+                    if event.chunk.choices[0].finish_reason is not None:
+                        return event.snapshot.choices[0].message.parsed
+        return None
 
     async def provide_clarification(self, clarifications: str):
         """Receive clarification from external source (e.g. user input)"""
-        self._context.clarifications = clarifications
-        self._context.clarification_used = True
+        self.conversation.append(
+            {"role": "user", "content": f"CLARIFICATIONS: {clarifications}"}
+        )
+        self._context.clarifications_used += 1
         self._context.clarification_received.set()
         self.state = AgentStatesEnum.RESEARCHING
         logger.info(f"✅ Clarification received: {clarifications[:300]}...")
 
-    async def _handle_research_task(self, task: str):
+    def _log_step(self, result: NextStepToolStub):
+        next_step = result.remaining_steps[0] if result.remaining_steps else "Completing"
+        reasoning = result.function.reasoning[:500] if hasattr(result.function, 'reasoning') else "No reasoning"
+        tool_name = result.function.tool if hasattr(result.function, 'tool') else str(type(result.function).__name__)
+        sources = '\n         '.join([str(source) for source in self._context.sources.values()])
+        logger.info(f"""
+###############################################
+🤖 LLM RESPONSE DEBUG:
+   🧠 Reasoning Steps: {result.reasoning_steps}
+   📊 Current Situation: '{result.current_situation[:100]}...'
+   📋 Plan Status: '{result.plan_status[:100]}...'
+   🔍 Searches Done: {self._context.searches_used}
+   🔍 Clarifications Done: {self._context.clarifications_used}
+   🔍  Sources: 
+{sources}
+   ✅ Enough Data: {result.enough_data}
+   📝 Remaining Steps: {result.remaining_steps}
+   🏁 Task Completed: {result.task_completed}
+   🔧 Tool: {result.function}
+   
+   
+   ➡️ Next Step: {next_step} using {tool_name}
+   💭 Reasoning: {reasoning}...
+###############################################""")
+
+    async def execute(self, ):
         """Execute research task using SGR"""
-
-        system_prompt = get_system_prompt(task)
-        conversation = [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": task}
-        ]
+        self.conversation.extend([
+            {"role": "user",
+             "content": f"\nORIGINAL USER REQUEST: '{self.task}'\n(Use this for language consistency in reports)"}
+        ])
         # Execute reasoning steps
-        for i in range(config.execution.max_steps):
-            step_id = f"step-{i + 1}"
-            logger.info(f"agent {self.id} Step {step_id}")
+        try:
+            for i in range(config.execution.max_steps):
+                step_id = f"step-{i + 1}"
+                logger.info(f"agent {self.id} Step {step_id}")
+                try:
+                    response_format = self._prepare_tools()
+                    result: NextStepToolStub = await self._openai_streaming_request(
+                        messages=self._prepare_context(),
+                        response_format=response_format
+                    )
+                    if result is None:
+                        logger.error("Failed to parse LLM response")
+                        break
+                    self._log_step(result)
+                    self._context.current_state = result
 
-            # Add context about clarification usage and available sources
-            context_msg = await self._prepare_context(task)
-            # ToDo: role should be system or assistant?
-            conversation.append({"role": "system", "content": context_msg})
-            logger.info(f"New context for LLM: {context_msg}")
-            try:
-                completion = await self.openai_client.beta.chat.completions.parse(
-                    model=config.openai.model,
-                    response_format=NextStepTools,
-                    messages=conversation,
-                    max_tokens=config.openai.max_tokens,
-                    temperature=config.openai.temperature,
-                )
-
-                result: NextStepTools = completion.choices[0].message.parsed
-
-                if result is None:
-                    logger.error(f"Failed to parse LLM response: {completion}")
+                except Exception as e:
+                    logger.error(f"❌ LLM request error: {str(e)}")
                     break
 
-                # Debug: Log ALL NextStep fields
-                logger.info("🤖 LLM RESPONSE DEBUG:")
-                logger.info(f"   🧠 Reasoning Steps: {result.reasoning_steps}")
-                logger.info(f"   📊 Current Situation: '{result.current_situation[:100]}...'")
-                logger.info(f"   📋 Plan Status: '{result.plan_status[:100]}...'")
-                logger.info(f"   🔍 Searches Done: {result.searches_done}")
-                logger.info(f"   ✅ Enough Data: {result.enough_data}")
-                logger.info(f"   📝 Remaining Steps: {result.remaining_steps}")
-                logger.info(f"   🏁 Task Completed: {result.task_completed}")
-                logger.info(f"   🔧 Tool: {result.function.tool}")
-            except Exception as e:
-                logger.error(f"❌ LLM request error: {str(e)}")
-                break
+                next_step = result.remaining_steps[0] if result.remaining_steps else "Completing"
+                self.conversation.append({
+                    "role": "assistant",
+                    "content": next_step,
+                    "tool_calls": [{
+                        "type": "function",
+                        "id": str(step_id),
+                        "function": {
+                            "name": result.function.tool,
+                            "arguments": result.function.model_dump_json()
+                        }
+                    }]
+                })
+                self.streaming_generator.add_tool_call(
+                    str(step_id),
+                    result.function.tool,
+                    result.function.model_dump_json()
+                )
 
-            tool_call_result = result.function(self._context)
+                tool_call_result = result.function(self._context)  # noqa
 
-            # ToDo: need refactoring, should be the better way. Something like state machine?
-            if result.task_completed or isinstance(result.function, ReportCompletion):
-                logger.info("✅ Research task completed.")
-                break
-
-            # Check for clarification cycling
-            # ToDo: looks like a hack. Clarification option should be excluded from model context on previous steps
-            if isinstance(result.function, Clarification):
-                if self._context.clarification_used:
-                    logger.warning("❌ Clarification cycling detected - skipping clarification")
-                    conversation.append({
-                        "role": "user",
-                        "content": "ANTI-CYCLING: Clarification already used. Continue with generate_plan based on available information."
-                    })
+                if isinstance(result.function, Clarification):
+                    self.state = AgentStatesEnum.WAITING_FOR_CLARIFICATION
+                    await self._context.clarification_received.wait()
                     continue
-                self.state = AgentStatesEnum.WAITING_FOR_CLARIFICATION
-                await self._context.clarification_received.wait()
-                task = f"Original request: '{task}'\nClarification: {self._context.clarifications}\n\nProceed with research based on clarification."
-                continue
 
-            # Display current step
-            next_step = result.remaining_steps[0] if result.remaining_steps else "Completing"
-            logger.info(f"➡️\n"
-                        f"   Next Step: {next_step} using {result.function.tool}\n"
-                        f"   Reasoning: {result.function.reasoning[:500]}...\n"
-                        f"   Tool: {result.function.tool}")
+                self.conversation.append({"role": "tool", "content": tool_call_result, "tool_call_id": step_id})
+                self.streaming_generator.add_chunk(f"{tool_call_result}\n")
 
-            conversation.append({
-                "role": "assistant",
-                "content": next_step,
-                "tool_calls": [{
-                    "type": "function",
-                    "id": str(step_id),
-                    "function": {
-                        "name": result.function.tool,
-                        "arguments": result.function.model_dump_json()
-                    }
-                }]
-            })
+                # ToDo: need refactoring, not fully like this
+                if result.task_completed or isinstance(result.function, ReportCompletion):
+                    self.state = AgentStatesEnum.COMPLETED
+                    logger.info("✅ Research task completed.")
+                    break
+                if isinstance(result.function, CreateReport):
+                    logger.info("\n✅ Auto-completing after report creation")
+                    logger.info(f"Report Content:\n{tool_call_result}")
+                    break
+        except Exception as e:
+            logger.error(f"❌ Agent execution error: {str(e)}")
+        finally:
+            self.streaming_generator.finish()
 
-            # Add result to conversation - format search results better
-            # ToDo: wtf is this? need refactoring
-            conversation.append({"role": "tool", "content": tool_call_result, "tool_call_id": step_id})
-
-            print(f"  Result: {tool_call_result[:100]}..." if len(tool_call_result) > 100 else f"  Result: {tool_call_result}")
-
-            # Auto-complete after report creation
-            if isinstance(result.function, CreateReport):
-                print("\n✅ [bold green]Auto-completing after report creation[/bold green]")
-                break
 
 async def main():
-    agent = SGRAgent()
     research_request = "Исследовать актуальные цены на BMW X6 2025 года в России"
-    await agent._handle_research_task(research_request)
+    agent = SGRResearchAgent(research_request)
+
+    await agent.execute()
+    with open("conversation_log.txt", "w", encoding="utf-8") as f:
+        for msg in agent.conversation:
+            f.write(f"{msg}\n\n")
+    print("Streaming output:", agent.streaming_generator.queue.qsize())
 
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
