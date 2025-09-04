@@ -234,8 +234,8 @@ DECISION PRIORITY (BIAS TOWARD CLARIFICATION):
 1. If ANY uncertainty about user request → Clarification
 2. If no plan exists and request is clear → GeneratePlan
 3. If need to adapt research approach → AdaptPlan
-4. If need more information AND searches_done < 3 → WebSearch
-5. If searches_done >= 2 OR enough_data = True → CreateReport
+4. If need more information → WebSearch
+5. If sufficient data collected → CreateReport
 6. If report created → ReportCompletion
 
 CLARIFICATION TRIGGERS:
@@ -243,11 +243,6 @@ CLARIFICATION TRIGGERS:
 - Ambiguous requests with multiple interpretations
 - Missing context for specialized domains
 - Any request requiring assumptions
-
-ANTI-CYCLING RULES:
-- Max 1 clarification per session
-- Max 3-4 searches per session
-- Create report after 2-3 searches regardless of completeness
 """
 
 
