@@ -21,14 +21,23 @@ sgr-deep-research/
 │   ├── services/            # 🔧 External integrations
 │   │   └── tavily_search.py # Search service
 │   ├── main.py              # 🚀 Application entry point
-│   └── settings.py          # ⚙️ Configuration management
+│   ├── settings.py          # ⚙️ Configuration management
+│   └── pyproject.toml       # 📦 Dependencies & project config
 ├── reports/                 # 📊 Generated research reports
 ├── config.yaml.example     # 📝 Configuration template
-├── docker-compose.yml      # 🐳 Docker deployment
-└── requirements.txt        # 📦 Dependencies
+└── docker-compose.yml      # 🐳 Docker deployment
 ```
 
 ## 🚀 Quick Start
+
+### Prerequisites
+First, install UV (modern Python package manager):
+```bash
+# Install UV
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# or on Windows:
+# powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
 
 ### Local Development
 ```bash
@@ -36,11 +45,12 @@ sgr-deep-research/
 cp config.yaml.example config.yaml
 # Edit config.yaml with your API keys
 
-# 2. Install dependencies
-pip install -r requirements.txt
+# 2. Change to src directory and install dependencies
+cd src
+uv sync
 
 # 3. Run the server
-cd src && python main.py
+uv run python main.py
 ```
 
 ### Docker Deployment
