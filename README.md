@@ -95,7 +95,7 @@ curl -X POST "http://localhost:8010/agents/{agent_id}/provide_clarification" \
   }'
 
 # Provide clarification to waiting agent (Method 2)
-curl -X POST "http://localhost:8010/completions/create" \
+curl -X POST "http://localhost:8010/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "{agent_id}",
