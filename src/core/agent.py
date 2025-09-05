@@ -1,13 +1,15 @@
 import logging
+import traceback
 import uuid
 from typing import Type
 
-from core.models import AgentStatesEnum, ResearchContext
-from core.reasoning_schemas import Clarification, CreateReport, ReportCompletion, get_system_prompt
-from core.stream import OpenAIStreamingGenerator
-from core.tools import ClarificationTool, NextStepToolsBuilder, NextStepToolStub, WebSearchTool
 from openai import AsyncOpenAI
 from settings import get_config
+
+from core.models import AgentStatesEnum, ResearchContext
+from core.reasoning_schemas import Clarification, ReportCompletion, get_system_prompt
+from core.stream import OpenAIStreamingGenerator
+from core.tools import ClarificationTool, NextStepToolsBuilder, NextStepToolStub, WebSearchTool
 
 # Настройка базового логирования
 logging.basicConfig(
@@ -112,7 +114,8 @@ class SGRResearchAgent:
             [
                 {
                     "role": "user",
-                    "content": f"\nORIGINAL USER REQUEST: '{self.task}'\n(Use this for language consistency in reports)",
+                    "content": f"\nORIGINAL USER REQUEST: '{self.task}'\n"
+                    f"(Use this for language consistency in reports)",
                 }
             ]
         )
@@ -172,22 +175,6 @@ class SGRResearchAgent:
                     break
         except Exception as e:
             logger.error(f"❌ Agent execution error: {str(e)}")
+            traceback.print_exc()
         finally:
             self.streaming_generator.finish()
-
-
-async def main():
-    research_request = "Исследовать актуальные цены на BMW X6 2025 года в России"
-    agent = SGRResearchAgent(research_request)
-
-    await agent.execute()
-    with open("conversation_log.txt", "w", encoding="utf-8") as f:
-        for msg in agent.conversation:
-            f.write(f"{msg}\n\n")
-    print("Streaming output:", agent.streaming_generator.queue.qsize())
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(main())

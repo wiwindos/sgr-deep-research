@@ -1,9 +1,8 @@
 import asyncio
 import logging
-from typing import Dict
-from uuid import UUID
 
 from core.agent import SGRResearchAgent
+from core.models import AgentStatesEnum
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 
@@ -13,8 +12,8 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="SGR Deep Research API", version="1.0.0")
 
-# In-memory хранилище агентов
-agents_storage: Dict[UUID, SGRResearchAgent] = {}
+# ToDo: better to move to a separate service
+agents_storage: dict[str, SGRResearchAgent] = {}
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -23,7 +22,7 @@ async def health_check():
 
 
 @app.get("/agents/{agent_id}/state", response_model=AgentStateResponse)
-async def get_agent_state(agent_id: UUID):
+async def get_agent_state(agent_id: str):
     if agent_id not in agents_storage:
         raise HTTPException(status_code=404, detail="Agent not found")
 
@@ -53,21 +52,56 @@ async def get_agents_list():
     return AgentListResponse(agents=agents_list, total=len(agents_list))
 
 
-def extract_task_from_messages(messages):
+def extract_user_content_from_messages(messages):
     for message in reversed(messages):
         if message.role == "user":
             return message.content
-
     raise ValueError("User message not found in messages")
+
+
+@app.post("agents/{agent_id}/provide_clarification")
+async def provide_clarification(agent_id: str, request: ChatCompletionRequest):
+    if not request.stream:
+        raise HTTPException(status_code=501, detail="Only streaming responses are supported. Set 'stream=true'")
+
+    try:
+        clarifications_content = extract_user_content_from_messages(request.messages)
+        agent = agents_storage.get(agent_id)
+        if not agent:
+            raise HTTPException(status_code=404, detail="Agent not found")
+
+        logger.info(f"Providing clarification to agent {agent.id}: {clarifications_content[:100]}...")
+
+        await agent.provide_clarification(clarifications_content)
+        return StreamingResponse(
+            agent.streaming_generator.stream(),
+            media_type="text/plain",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Agent-ID": str(agent.id),
+            },
+        )
+
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error completion: {e}")
+        raise HTTPException(status_code=500, detail="str(e)")
 
 
 @app.post("/v1/chat/completions")
 async def create_chat_completion(request: ChatCompletionRequest):
     if not request.stream:
-        raise HTTPException(status_code=400, detail="Only streaming responses are supported. Set 'stream=true'")
-
+        raise HTTPException(status_code=501, detail="Only streaming responses are supported. Set 'stream=true'")
+    if (
+        request.model
+        and request.model in agents_storage
+        and agents_storage[request.model].state == AgentStatesEnum.WAITING_FOR_CLARIFICATION
+    ):
+        return await provide_clarification(request.model, request)
     try:
-        task = extract_task_from_messages(request.messages)
+        task = extract_user_content_from_messages(request.messages)
         agent = SGRResearchAgent(task=task)
 
         agents_storage[agent.id] = agent
@@ -80,7 +114,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
-                "X-Agent-ID": str(agent.id),  # Возвращаем ID агента в заголовке
+                "X-Agent-ID": str(agent.id),
             },
         )
 
