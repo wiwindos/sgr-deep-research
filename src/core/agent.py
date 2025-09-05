@@ -170,6 +170,7 @@ class SGRResearchAgent:
 
                 if isinstance(result.function, Clarification):
                     self.state = AgentStatesEnum.WAITING_FOR_CLARIFICATION
+                    self._context.clarification_received.clear()
                     await self._context.clarification_received.wait()
                     continue
                 if result.task_completed or isinstance(result.function, ReportCompletion):
