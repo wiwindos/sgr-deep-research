@@ -66,8 +66,6 @@ class ClarificationTool(ToolCallMixin, Clarification):
 class GeneratePlanTool(ToolCallMixin, GeneratePlan):
     def __call__(self, context: ResearchContext) -> str:
         """Generate and store research plan based on clear user request"""
-        context.plan = self
-
         logger.info("📋 Research Plan Created:")
         logger.info(f"🎯 Goal: {self.research_goal}")
         logger.info(f"📝 Steps: {len(self.planned_steps)}")
