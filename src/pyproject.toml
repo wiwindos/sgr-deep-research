@@ -6,7 +6,7 @@ authors = [
     {name = "virrius"}
 ]
 requires-python = ">=3.10"
-license = {text = "MIT"}
+license = "MIT"
 
 dependencies = [
     # Core dependencies - основные зависимости для работы системы
