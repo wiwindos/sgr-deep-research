@@ -86,10 +86,19 @@ curl http://localhost:8010/agents
 # Get specific agent state
 curl http://localhost:8010/agents/{agent_id}/state
 
-# Provide clarification to waiting agent
+# Provide clarification to waiting agent (Method 1)
 curl -X POST "http://localhost:8010/agents/{agent_id}/provide_clarification" \
   -H "Content-Type: application/json" \
   -d '{
+    "messages": [{"role": "user", "content": "Focus on luxury models only"}],
+    "stream": true
+  }'
+
+# Provide clarification to waiting agent (Method 2)
+curl -X POST "http://localhost:8010/completions/create" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "{agent_id}",
     "messages": [{"role": "user", "content": "Focus on luxury models only"}],
     "stream": true
   }'
