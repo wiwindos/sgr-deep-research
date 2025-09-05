@@ -7,10 +7,13 @@ from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar, Type
 
 from core.models import SourceData
-from tavily import TavilyClient
 
 if TYPE_CHECKING:
     from core.models import ResearchContext
+from pydantic import Field, create_model
+from settings import get_config
+from services.tavily_search import TavilySearchService
+
 from core.reasoning_schemas import (
     AdaptPlan,
     Clarification,
@@ -20,14 +23,10 @@ from core.reasoning_schemas import (
     ReportCompletion,
     WebSearch,
 )
-from pydantic import Field, create_model
-from settings import get_config
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 config = get_config().app_config
-# ToDo: find better place for that
-tavily = TavilyClient(config.tavily.api_key)
 
 
 class ToolCallMixin:

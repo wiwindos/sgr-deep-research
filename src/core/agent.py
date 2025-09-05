@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 class SGRResearchAgent:
     def __init__(self, task: str, max_clarifications: int = 3, max_searches: int = 4):
-        self.id = uuid.uuid4()
+        self.id = f"sgr_agent_{uuid.uuid4()}"
         self.task = task
 
         self._context = ResearchContext()
@@ -34,7 +34,7 @@ class SGRResearchAgent:
         self.max_searches = max_searches
         self.openai_client = AsyncOpenAI(base_url=config.openai.base_url, api_key=config.openai.api_key)
         self.state = AgentStatesEnum.INITED
-        self.streaming_generator = OpenAIStreamingGenerator(model=f"sgr_agent_{self.id}")
+        self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
 
     def _prepare_tools(self) -> Type[NextStepToolStub]:
         """Prepare tool classes with current context limits"""
@@ -159,22 +159,16 @@ class SGRResearchAgent:
 
                 tool_call_result = result.function(self._context)  # noqa
 
+                self.conversation.append({"role": "tool", "content": tool_call_result, "tool_call_id": step_id})
+                self.streaming_generator.add_chunk(f"{tool_call_result}\n")
+
                 if isinstance(result.function, Clarification):
                     self.state = AgentStatesEnum.WAITING_FOR_CLARIFICATION
                     await self._context.clarification_received.wait()
                     continue
-
-                self.conversation.append({"role": "tool", "content": tool_call_result, "tool_call_id": step_id})
-                self.streaming_generator.add_chunk(f"{tool_call_result}\n")
-
-                # ToDo: need refactoring, not fully like this
                 if result.task_completed or isinstance(result.function, ReportCompletion):
                     self.state = AgentStatesEnum.COMPLETED
                     logger.info("✅ Research task completed.")
-                    break
-                if isinstance(result.function, CreateReport):
-                    logger.info("\n✅ Auto-completing after report creation")
-                    logger.info(f"Report Content:\n{tool_call_result}")
                     break
         except Exception as e:
             logger.error(f"❌ Agent execution error: {str(e)}")
