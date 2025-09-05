@@ -42,8 +42,8 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 ### Local Development
 ```bash
 # 1. Setup configuration
-cp config.yaml.example config.yaml
-# Edit config.yaml with your API keys
+cp src/config.yaml.example src/config.yaml
+# Edit src/config.yaml with your API keys
 
 # 2. Change to src directory and install dependencies
 cd src
@@ -56,7 +56,7 @@ uv run python main.py
 ### Docker Deployment
 ```bash
 # 1. Setup configuration
-cp config.yaml.example src/config.yaml
+cp src/config.yaml.example src/config.yaml
 # Edit src/config.yaml with your API keys
 
 # 2. Deploy with Docker Compose
