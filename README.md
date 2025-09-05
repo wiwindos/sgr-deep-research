@@ -1,8 +1,8 @@
-# 🧠 SGR Deep Research - Schema-Guided Reasoning API
+# 🧠 SGR Deep Research - Schema-Guided Reasoning System
 
 https://github.com/user-attachments/assets/a5e34116-7853-43c2-ba93-2db811b8584a
 
-Production-ready FastAPI service for automated research using Schema-Guided Reasoning (SGR). Features real-time streaming responses and comprehensive research capabilities.
+Production-ready system for automated research using Schema-Guided Reasoning (SGR). Features real-time streaming responses and comprehensive research capabilities.
 
 ## 📁 Project Structure
 
