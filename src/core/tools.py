@@ -6,6 +6,8 @@ import os
 from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar, Type
 
+from core.prompts import PromptLoader
+
 if TYPE_CHECKING:
     from core.models import ResearchContext
 
@@ -15,7 +17,6 @@ from settings import get_config
 
 from core.models import SearchResult
 from core.reasoning_schemas import (
-    TOOL_FUNCTION_PROMPT,
     AdaptPlan,
     Clarification,
     CreateReport,
@@ -246,8 +247,9 @@ class NextStepToolsBuilder:
 
     @classmethod
     def build_NextStepTools(cls, exclude: list[Type[ToolCallMixin]] | None = None) -> Type[NextStepToolStub]:
+        tool_prompt = PromptLoader.get_tool_function_prompt()
         return create_model(
             "NextStepTools",
             __base__=NextStepToolStub,
-            function=(cls._create_tool_types_union(exclude), Field(description=TOOL_FUNCTION_PROMPT)),
+            function=(cls._create_tool_types_union(exclude), Field(description=tool_prompt)),
         )

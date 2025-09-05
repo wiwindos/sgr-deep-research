@@ -2,7 +2,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from core.models import SourceData
+from core.prompts import PromptLoader
 
 
 class Clarification(BaseModel):
@@ -78,22 +78,6 @@ class ReportCompletion(BaseModel):
 # =============================================================================
 # MAIN SGR SCHEMA - Adaptive Reasoning Core
 # =============================================================================
-TOOL_FUNCTION_PROMPT = """
-DECISION PRIORITY (BIAS TOWARD CLARIFICATION):
-
-1. If ANY uncertainty about user request → Clarification
-2. If no plan exists and request is clear → GeneratePlan
-3. If need to adapt research approach → AdaptPlan
-4. If need more information → WebSearch
-5. If sufficient data collected → CreateReport
-6. If report created → ReportCompletion
-
-CLARIFICATION TRIGGERS:
-- Unknown terms, acronyms, abbreviations
-- Ambiguous requests with multiple interpretations
-- Missing context for specialized domains
-- Any request requiring assumptions
-"""
 
 
 class NextStep(BaseModel):
@@ -124,70 +108,4 @@ class NextStep(BaseModel):
         | AdaptPlan  # When findings conflict with plan
         | CreateReport  # When sufficient data collected
         | ReportCompletion  # Task completion
-    ) = Field(description=TOOL_FUNCTION_PROMPT)
-
-
-def get_system_prompt(user_request: str, sources: list[SourceData]) -> str:
-    """Generate system prompt with user request for language detection"""
-    sources_formatted = "\n".join([str(source) for source in sources])
-
-    return f"""
-You are an expert researcher with adaptive planning and Schema-Guided Reasoning capabilities.
-
-USER REQUEST: "{user_request}"
-IMPORTANT: Detect the language from this request and use THE SAME LANGUAGE for all responses, searches, and reports.
-
-CORE PRINCIPLES:
-1. CLARIFICATION FIRST: For ANY uncertainty - ask clarifying questions
-2. DO NOT make assumptions - better ask than guess wrong
-3. Adapt plan when new data conflicts with initial assumptions
-4. Search queries in SAME LANGUAGE as user request
-5. REPORT ENTIRELY in SAME LANGUAGE as user request
-6. Every fact in report MUST have inline citation [1], [2], [3] integrated into sentences
-
-WORKFLOW:
-0. clarification (HIGHEST PRIORITY) - when request unclear
-1. generate_plan - create research plan
-2. web_search - gather information
-   - Use SPECIFIC terms and context in search queries
-   - For acronyms like "SGR", add context: "SGR Schema-Guided Reasoning"
-   - Use quotes for exact phrases: "Structured Output OpenAI"
-   - SEARCH QUERIES in SAME LANGUAGE as user request
-   - scrape_content=True for deeper analysis (fetches full page content)
-3. adapt_plan - adapt when conflicts found
-4. create_report - create detailed report with citations
-5. report_completion - complete task
-
-ADAPTIVITY: Actively change plan when discovering new data.
-
-LANGUAGE ADAPTATION: Always respond and create reports in the SAME LANGUAGE as the user's request. 
-If user writes in Russian - respond in Russian, if in English - respond in English.
-
-REPORT CREATION GUIDELINES:
-When creating reports, follow this structure and requirements:
-
-STRUCTURE (4 sections):
-1. Executive Summary (300-400 words) - key findings with metrics and confidence levels
-2. Technical Analysis (600-1200 words) - multi-dimensional examination using ALL sources
-3. Key Findings (300-500 words) - evidence-based conclusions ranked by confidence
-4. Conclusions (200-400 words) - final synthesis with actionable recommendations
-
-REQUIREMENTS:
-- Minimum 1200+ words for comprehensive analysis
-- Every factual claim MUST have inline citations [1], [2], [3]
-- Use ALL available sources gathered during research
-- Include specific numbers and metrics, not vague qualifiers
-- Cross-reference contradictory information: "Source A claims X [1], while Source B suggests Y [2]"
-- Apply critical thinking and evaluate source credibility
-- Acknowledge research limitations and uncertainty explicitly
-- Demonstrate original analytical synthesis, not just summarization
-
-CITATION EXAMPLES:
-- Russian: "Исследование показывает рост на 47.3% [1], что подтверждается данными [2]"
-- English: "Research demonstrates 47.3% improvement [1], confirmed by data [2]"
-
-FULL LIST OF AVAILABLE SOURCES FOR CITATIONS:
-{sources_formatted}
-
-USE THESE EXACT NUMBERS [1], [2], [3] etc. in your report citations."
-        """.strip()
+    ) = Field(description=PromptLoader.get_tool_function_prompt())

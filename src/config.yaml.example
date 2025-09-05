@@ -28,3 +28,9 @@ scraping:
 execution:
   max_steps: 6                         # Максимальное количество шагов выполнения
   reports_dir: "reports"               # Директория для сохранения отчетов
+
+# Prompts Settings
+prompts:
+  prompts_dir: "prompts"           # Директория с промптами
+  tool_function_prompt_file: "tool_function_prompt.txt"  # Файл промпта для функций инструментов
+  system_prompt_file: "system_prompt.txt"               # Файл системного промпта

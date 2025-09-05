@@ -41,6 +41,16 @@ class ScrapingConfig(BaseModel):
     content_limit: int = Field(default=1500, gt=0, description="Лимит символов контента на источник")
 
 
+class PromptsConfig(BaseModel):
+    """Настройки промптов."""
+
+    prompts_dir: str = Field(default="prompts", description="Директория с промптами")
+    tool_function_prompt_file: str = Field(
+        default="tool_function_prompt.txt", description="Файл промпта для функций инструментов"
+    )
+    system_prompt_file: str = Field(default="system_prompt.txt", description="Файл системного промпта")
+
+
 class ExecutionConfig(BaseModel):
     """Настройки выполнения приложения."""
 
@@ -56,6 +66,7 @@ class AppConfig(BaseModel):
     search: SearchConfig = Field(default_factory=SearchConfig, description="Настройки поиска")
     scraping: ScrapingConfig = Field(default_factory=ScrapingConfig, description="Настройки скрепинга")
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig, description="Настройки выполнения")
+    prompts: PromptsConfig = Field(default_factory=PromptsConfig, description="Настройки промптов")
 
 
 class ServerConfig(BaseModel):

@@ -7,7 +7,8 @@ from openai import AsyncOpenAI
 from settings import get_config
 
 from core.models import AgentStatesEnum, ResearchContext
-from core.reasoning_schemas import Clarification, ReportCompletion, get_system_prompt
+from core.prompts import PromptLoader
+from core.reasoning_schemas import Clarification, ReportCompletion
 from core.stream import OpenAIStreamingGenerator
 from core.tools import ClarificationTool, NextStepToolsBuilder, NextStepToolStub, WebSearchTool
 
@@ -49,7 +50,9 @@ class SGRResearchAgent:
 
     def _prepare_context(self) -> list[dict]:
         """Prepare conversation context with system prompt and current state"""
-        system_prompt = get_system_prompt(user_request=self.task, sources=list(self._context.sources.values()))
+        system_prompt = PromptLoader.get_system_prompt(
+            user_request=self.task, sources=list(self._context.sources.values())
+        )
         conversation = [{"role": "system", "content": system_prompt}]
         conversation.extend(self.conversation)
         return conversation
