@@ -6,15 +6,16 @@ import os
 from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar, Type
 
-from core.models import SourceData
-
 if TYPE_CHECKING:
     from core.models import ResearchContext
-from pydantic import Field, create_model
-from settings import get_config
-from services.tavily_search import TavilySearchService
 
+from pydantic import Field, create_model
+from services.tavily_search import TavilySearchService
+from settings import get_config
+
+from core.models import SearchResult
 from core.reasoning_schemas import (
+    TOOL_FUNCTION_PROMPT,
     AdaptPlan,
     Clarification,
     CreateReport,
@@ -163,86 +164,53 @@ class ReportCompletionTool(ToolCallMixin, ReportCompletion):
         )
 
 
-# ToDo: Looks like some service logic here, need to be divided
 class WebSearchTool(ToolCallMixin, WebSearch):
+    def __init__(self, **data):
+        super().__init__(**data)
+        self._search_service = TavilySearchService()
+
     def __call__(self, context: ResearchContext) -> str:
-        """Execute web search with optional content scraping"""
+        """Execute web search using TavilySearchService"""
 
         logger.info(f"🔍 Search query: '{self.query}'")
 
-        # Check if scraping should be enabled
-        should_scrape = config.scraping.enabled and self.scrape_content
-        if should_scrape:
-            logger.info("📄 Scraping enabled - will fetch full content")
-
-        response = tavily.search(
-            query=self.query, max_results=self.max_results, include_answer=True, include_raw_content=True
+        answer, sources = self._search_service.search(
+            query=self.query,
+            max_results=self.max_results,
         )
-        # Add citations and optionally scrape content
-        citations = []
 
-        for i, result in enumerate(response.get("results", []), len(context.sources) + 1):
-            url = result.get("url", "")
-            title = result.get("title", "")
-            if url:
-                src = SourceData(number=i, title=title, url=url, snippet=result.get("content", ""))
-                # Scrape full content if enabled and within limits
-                if should_scrape and i < config.scraping.max_pages:
-                    logger.info(f"   📄 Scraping [{i}] {url[:50]}...")
-                    src.full_content = result.get("raw_content", "")
-                    src.char_count = len(src.full_content) or 0
-                citations.append(src)
-                context.sources[url] = src
+        sources = TavilySearchService.rearrange_sources(sources, starting_number=len(context.sources) + 1)
 
-        search_result = {
-            "query": self.query,
-            "answer": response.get("answer", ""),
-            "citations": citations,
-            "scraping_enabled": should_scrape,
-            "timestamp": datetime.now().isoformat(),
-        }
+        for source in sources:
+            context.sources[source.url] = source
 
+        search_result = SearchResult(
+            query=self.query,
+            answer=answer,
+            citations=sources,
+            timestamp=datetime.now(),
+        )
         context.searches.append(search_result)
 
-        logger.info(f"🔍 Found {len(citations)} citations")
-        for citation in citations:
-            logger.info(f"   {str(citation)}")
+        formatted_result = f"Search Query: {search_result.query}\n\n"
 
-        formatted_result = f"Search Query: {search_result.get('query', '')}\n\n"
-
-        # Include answer only if it exists (with include_answer=True)
-        if search_result.get("answer"):
-            formatted_result += f"AI Answer: {search_result.get('answer')}\n\n"
+        if search_result.answer:
+            formatted_result += f"AI Answer: {search_result.answer}\n\n"
 
         formatted_result += "Search Results:\n\n"
 
-        for res in citations[:5]:
-            if res.full_content:
-                content = res.full_content[: config.scraping.content_limit]
-                formatted_result += f"{str(res)}\n\n**Full Content (Markdown):**\n{content}\n\n"
+        for source in sources:
+            if source.full_content:
+                formatted_result += (
+                    f"{str(source)}\n\n**Full Content (Markdown):**\n"
+                    f"{source.full_content[: config.scraping.content_limit]}\n\n"
+                )
             else:
-                formatted_result += f"{str(res)}\n{res.snippet}\n\n"
+                formatted_result += f"{str(source)}\n{source.snippet}\n\n"
+
         context.searches_used += 1
         logger.info(formatted_result)
         return formatted_result
-
-
-TOOL_FUNCTION_PROMPT = """
-DECISION PRIORITY (BIAS TOWARD CLARIFICATION):
-
-1. If ANY uncertainty about user request → Clarification
-2. If no plan exists and request is clear → GeneratePlan
-3. If need to adapt research approach → AdaptPlan
-4. If need more information → WebSearch
-5. If sufficient data collected → CreateReport
-6. If report created → ReportCompletion
-
-CLARIFICATION TRIGGERS:
-- Unknown terms, acronyms, abbreviations
-- Ambiguous requests with multiple interpretations
-- Missing context for specialized domains
-- Any request requiring assumptions
-"""
 
 
 class NextStepToolStub(NextStep, ToolCallMixin):
@@ -252,6 +220,8 @@ class NextStepToolStub(NextStep, ToolCallMixin):
 
 
 class NextStepToolsBuilder:
+    """Builder for NextStepTool with dynamic union tool function type on pydantic models level"""
+
     tools: ClassVar[list[Type[ToolCallMixin]]] = [
         ClarificationTool,
         GeneratePlanTool,

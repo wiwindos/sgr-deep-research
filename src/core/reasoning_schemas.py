@@ -1,7 +1,8 @@
 from typing import Literal
 
-from core.models import SourceData
 from pydantic import BaseModel, Field
+
+from core.models import SourceData
 
 
 class Clarification(BaseModel):
@@ -30,7 +31,7 @@ class WebSearch(BaseModel):
     tool: Literal["web_search"]
     reasoning: str = Field(description="Why this search is needed and what to expect")
     query: str = Field(description="Search query in same language as user request")
-    max_results: int = Field(default=10, description="Maximum results", ge=1, le=15)
+    max_results: int = Field(default=10, description="Maximum results", ge=1, le=10)
     plan_adapted: bool = Field(default=False, description="Is this search after plan adaptation?")
     scrape_content: bool = Field(
         default=False,
@@ -59,7 +60,8 @@ class CreateReport(BaseModel):
         description="Copy of original user request to ensure language consistency"
     )
     content: str = Field(
-        description="Write comprehensive research report following the REPORT CREATION GUIDELINES from system prompt. Use the SAME LANGUAGE as user_request_language_reference."
+        description="Write comprehensive research report following the REPORT CREATION GUIDELINES from system prompt. "
+        "Use the SAME LANGUAGE as user_request_language_reference."
     )
     confidence: Literal["high", "medium", "low"] = Field(description="Confidence in findings")
 
@@ -76,6 +78,22 @@ class ReportCompletion(BaseModel):
 # =============================================================================
 # MAIN SGR SCHEMA - Adaptive Reasoning Core
 # =============================================================================
+TOOL_FUNCTION_PROMPT = """
+DECISION PRIORITY (BIAS TOWARD CLARIFICATION):
+
+1. If ANY uncertainty about user request → Clarification
+2. If no plan exists and request is clear → GeneratePlan
+3. If need to adapt research approach → AdaptPlan
+4. If need more information → WebSearch
+5. If sufficient data collected → CreateReport
+6. If report created → ReportCompletion
+
+CLARIFICATION TRIGGERS:
+- Unknown terms, acronyms, abbreviations
+- Ambiguous requests with multiple interpretations
+- Missing context for specialized domains
+- Any request requiring assumptions
+"""
 
 
 class NextStep(BaseModel):
@@ -106,24 +124,7 @@ class NextStep(BaseModel):
         | AdaptPlan  # When findings conflict with plan
         | CreateReport  # When sufficient data collected
         | ReportCompletion  # Task completion
-    ) = Field(
-        description="""
-    DECISION PRIORITY (BIAS TOWARD CLARIFICATION):
-
-    1. If ANY uncertainty about user request → Clarification
-    2. If no plan exists and request is clear → GeneratePlan
-    3. If need to adapt research approach → AdaptPlan
-    4. If need more information → WebSearch
-    5. If sufficient data collected → CreateReport
-    6. If report created → ReportCompletion
-
-    CLARIFICATION TRIGGERS:
-    - Unknown terms, acronyms, abbreviations
-    - Ambiguous requests with multiple interpretations
-    - Missing context for specialized domains
-    - Any request requiring assumptions
-    """
-    )
+    ) = Field(description=TOOL_FUNCTION_PROMPT)
 
 
 def get_system_prompt(user_request: str, sources: list[SourceData]) -> str:
