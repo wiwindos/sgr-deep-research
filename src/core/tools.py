@@ -85,9 +85,6 @@ class GeneratePlanTool(ToolCallMixin, GeneratePlan):
 class AdaptPlanTool(ToolCallMixin, AdaptPlan):
     def __call__(self, context: ResearchContext) -> str:
         """Adapt research plan based on new findings"""
-        if context.plan:
-            context.plan = self
-
         logger.info("\n🔄 PLAN ADAPTED")
         logger.info("📝 Changes:")
         for change in self.plan_changes:
