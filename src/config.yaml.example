@@ -1,36 +1,36 @@
 # SGR Research Agent - Configuration Template
 # Production-ready configuration for Schema-Guided Reasoning
-# Скопируйте этот файл в config.yaml и заполните своими API ключами
+# Copy this file to config.yaml and fill in your API keys
 
 # OpenAI Configuration
 openai:
-  api_key: "your-openai-api-key-here"  # Обязательно: Ваш OpenAI API ключ
-  base_url: ""                         # Опционально: Альтернативный URL (например, для прокси)
-  model: "gpt-4o-mini"                 # Модель для использования
-  max_tokens: 8000                     # Максимальное количество токенов
-  temperature: 0.4                     # Температура генерации (0.0-1.0)
+  api_key: "your-openai-api-key-here"  # Required: Your OpenAI API key
+  base_url: ""                         # Optional: Alternative URL (e.g., for proxy)
+  model: "gpt-4o-mini"                 # Model to use
+  max_tokens: 8000                     # Maximum number of tokens
+  temperature: 0.4                     # Generation temperature (0.0-1.0)
 
 # Tavily Search Configuration
 tavily:
-  api_key: "your-tavily-api-key-here"  # Обязательно: Ваш Tavily API ключ
+  api_key: "your-tavily-api-key-here"  # Required: Your Tavily API key
 
 # Search Settings
 search:
-  max_results: 10                      # Максимальное количество результатов поиска
+  max_results: 10                      # Maximum number of search results
 
 # Scraping Settings
 scraping:
-  enabled: false                       # Включить скрейпинг полного текста найденных страниц
-  max_pages: 5                         # Максимум страниц для скрейпинга за поиск
-  content_limit: 1500                  # Лимит символов полного контента на источник
+  enabled: false                       # Enable full text scraping of found pages
+  max_pages: 5                         # Maximum pages to scrape per search
+  content_limit: 1500                  # Character limit for full content per source
 
 # Execution Settings
 execution:
-  max_steps: 6                         # Максимальное количество шагов выполнения
-  reports_dir: "reports"               # Директория для сохранения отчетов
+  max_steps: 6                         # Maximum number of execution steps
+  reports_dir: "reports"               # Directory for saving reports
 
 # Prompts Settings
 prompts:
-  prompts_dir: "prompts"           # Директория с промптами
-  tool_function_prompt_file: "tool_function_prompt.txt"  # Файл промпта для функций инструментов
-  system_prompt_file: "system_prompt.txt"               # Файл системного промпта
+  prompts_dir: "prompts"           # Directory with prompts
+  tool_function_prompt_file: "tool_function_prompt.txt"  # Tool function prompt file
+  system_prompt_file: "system_prompt.txt"               # System prompt file
