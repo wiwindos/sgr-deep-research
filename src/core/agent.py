@@ -3,6 +3,7 @@ import traceback
 import uuid
 from typing import Type
 
+import httpx
 from openai import AsyncOpenAI
 from settings import get_config
 
@@ -35,7 +36,17 @@ class SGRResearchAgent:
         self.conversation = []
         self.max_clarifications = max_clarifications
         self.max_searches = max_searches
-        self.openai_client = AsyncOpenAI(base_url=config.openai.base_url, api_key=config.openai.api_key)
+        # Initialize OpenAI client with optional proxy support
+        client_kwargs = {
+            "base_url": config.openai.base_url,
+            "api_key": config.openai.api_key
+        }
+        
+        # Add proxy if configured and not empty
+        if config.openai.proxy.strip():
+            client_kwargs["http_client"] = httpx.AsyncClient(proxy=config.openai.proxy)
+
+        self.openai_client = AsyncOpenAI(**client_kwargs)
         self.state = AgentStatesEnum.INITED
         self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
 
