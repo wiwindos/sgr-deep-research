@@ -327,8 +327,8 @@ sequenceDiagram
             Agent->>Agent: Add clarification to context
             
         else Tool: GeneratePlan
-            Agent->>Agetn: Execute plan generation
-            Agent->>Tools: Research plan created
+            Agent->>Tools: Execute plan generation
+            Tools->>Agent: Research plan created
             
         else Tool: WebSearch  
             Agent->>Tools: Execute web search
