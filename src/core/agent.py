@@ -44,8 +44,8 @@ class SGRResearchAgent:
         
         # Add proxy if configured and not empty
         if config.openai.proxy.strip():
-            client_kwargs["http_client"] = self._create_http_client_with_proxy(config.openai.proxy)
-        
+            client_kwargs["http_client"] = httpx.AsyncClient(proxy=config.openai.proxy)
+
         self.openai_client = AsyncOpenAI(**client_kwargs)
         self.state = AgentStatesEnum.INITED
         self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
