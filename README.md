@@ -86,7 +86,8 @@ curl http://localhost:8010/health
 ```
 
 
-# OpenAI Client Examples for SGR Deep Research
+<details>
+<summary>🐍 OpenAI Client Examples for SGR Deep Research</summary>
 
 Simple Python examples for using OpenAI client with SGR Deep Research system.
 
@@ -200,8 +201,11 @@ print("\n\nResearch completed!")
 - Clarification questions are sent via `tool_calls` with function name `clarification`
 - Use the agent ID as model name to continue conversation
 
+</details>
 
-## 🌐 cURL Examples
+
+<details>
+<summary>🌐 cURL Examples</summary>
 
 The system provides a fully OpenAI-compatible API with advanced agent interruption and clarification capabilities.
 
@@ -218,7 +222,7 @@ curl -X POST "http://localhost:8010/v1/chat/completions" \
   }'
 ```
 
-### 🔄 cURL Examples Agent Interruption & Clarification Flow
+### 🔄 Agent Interruption & Clarification Flow
 
 When the agent needs clarification, it returns a unique agent ID in the streaming response model field. You can then continue the conversation using this agent ID.
 
@@ -235,7 +239,7 @@ curl -X POST "http://localhost:8010/v1/chat/completions" \
   }'
 ```
 
-#### cURL Examples Step 2: Agent Requests Clarification
+#### Step 2: Agent Requests Clarification
 The streaming response includes the agent ID in the model field:
 ```json
 {
@@ -253,7 +257,7 @@ The streaming response includes the agent ID in the model field:
 }
 ```
 
-#### cURL Examples Step 3: Continue with Agent ID
+#### Step 3: Continue with Agent ID
 ```bash
 curl -X POST "http://localhost:8010/v1/chat/completions" \
   -H "Content-Type: application/json" \
@@ -266,7 +270,7 @@ curl -X POST "http://localhost:8010/v1/chat/completions" \
   }'
 ```
 
-### cURL Examples Agent Management
+### Agent Management
 ```bash
 # Get all active agents
 curl http://localhost:8010/agents
@@ -282,6 +286,8 @@ curl -X POST "http://localhost:8010/agents/{agent_id}/provide_clarification" \
     "stream": true
   }'
 ```
+
+</details>
 
 ## 📊 SGR Agent Workflow
 
@@ -511,7 +517,8 @@ reports/YYYYMMDD_HHMMSS_Task_Name.md
 ### Example Report
 See `example_report.md` for a complete sample of SGR research output.
 
-## 🔗 Integration Examples
+<details>
+<summary>🔗 Integration Examples</summary>
 
 ### Python Client
 ```python
@@ -555,6 +562,8 @@ async def monitor_agent(agent_id: str):
         print(f"Searches used: {state['searches_used']}")
         print(f"Sources found: {state['sources_count']}")
 ```
+
+</details>
 
 ## 🎯 Example Research Tasks
 
