@@ -341,11 +341,13 @@ cp config.yaml.example config.yaml
 
 2. **Configure API keys:**
 ```yaml
+# OpenAI API Configuration
 openai:
-  api_key: "your-openai-api-key-here"
-  model: "gpt-4o-mini"
-  max_tokens: 8000
-  temperature: 0.4
+  api_key: "your-openai-api-key-here"  # Required: Your OpenAI API key
+  base_url: ""                         # Optional: Alternative URL (e.g., for proxy LiteLLM/vLLM)
+  model: "gpt-4o-mini"                 # Model to use
+  max_tokens: 8000                     # Maximum number of tokens
+  temperature: 0.4                     # Generation temperature (0.0-1.0)
 
 tavily:
   api_key: "your-tavily-api-key-here"
