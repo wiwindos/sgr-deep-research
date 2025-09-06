@@ -3,8 +3,8 @@
 Загружает конфигурацию из YAML файла с поддержкой переменных окружения.
 """
 
-import argparse
 import os
+from pathlib import Path
 from functools import cache
 
 from envyaml import EnvYAML
@@ -75,29 +75,16 @@ class ServerConfig(BaseModel):
 
     host: str = Field(default="0.0.0.0", description="Хост для прослушивания")
     port: int = Field(default=8010, gt=0, le=65535, description="Порт для прослушивания")
-    app_config: AppConfig = Field(description="Конфигурация приложения")
 
 
 @cache
-def get_config(argv=None) -> ServerConfig:
-    parser = argparse.ArgumentParser(description="SGR Deep Research Server")
-    parser.add_argument(
-        "--host", type=str, dest="host", default=os.environ.get("HOST", "0.0.0.0"), help="Хост для прослушивания"
-    )
-    parser.add_argument(
-        "--port", type=int, dest="port", default=int(os.environ.get("PORT", 8010)), help="Порт для прослушивания"
-    )
-    parser.add_argument(
-        "--app_config",
-        dest="app_config_path",
-        required=False,
-        type=str,
-        default=os.environ.get("APP_CONFIG", "config.yaml"),
-        help="Путь к файлу конфигурации YAML",
-    )
+def get_config() -> AppConfig:
+    app_config_env: str = os.environ.get("APP_CONFIG", "config.yaml")
 
-    args = parser.parse_args(argv)
+    # If path has no directory part, assume it's in current working directory
+    if os.path.basename(app_config_env) == app_config_env:
+        app_config_path = Path.cwd() / app_config_env
+    else:
+        app_config_path = Path(app_config_env)
 
-    return ServerConfig(
-        host=args.host, port=args.port, app_config=AppConfig.model_validate(dict(EnvYAML(args.app_config_path)))
-    )
+    return AppConfig.model_validate(dict(EnvYAML(str(app_config_path))))

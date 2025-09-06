@@ -2,16 +2,34 @@
 Основная точка входа для SGR Deep Research API сервера.
 """
 
+import os
 import uvicorn
+import argparse
 from api.endpoints import app
-from settings import get_config
 
 
 def main():
     """Запуск FastAPI сервера."""
-    config = get_config()
 
-    uvicorn.run(app, host=config.host, port=config.port, log_level="info")
+    parser = argparse.ArgumentParser(description="SGR Deep Research Server")
+    parser.add_argument(
+        "--host", type=str, dest="host", default=os.environ.get("HOST", "0.0.0.0"), help="Хост для прослушивания"
+    )
+    parser.add_argument(
+        "--port", type=int, dest="port", default=int(os.environ.get("PORT", 8010)), help="Порт для прослушивания"
+    )
+    parser.add_argument(
+        "--app_config",
+        dest="app_config_path",
+        required=False,
+        type=str,
+        default=os.environ.get("APP_CONFIG", "config.yaml"),
+        help="Путь к файлу конфигурации YAML",
+    )
+
+    args = parser.parse_args()
+
+    uvicorn.run(app, host=args.host, port=args.port, log_level="info")
 
 
 if __name__ == "__main__":
