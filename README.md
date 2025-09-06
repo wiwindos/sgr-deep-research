@@ -85,9 +85,12 @@ docker-compose up -d
 curl http://localhost:8010/health
 ```
 
+---
+
+## 📚 Integration & Examples
 
 <details>
-<summary>🐍 OpenAI Client Examples for SGR Deep Research</summary>
+<summary>🚀 <strong>Python OpenAI Client Examples</strong> - Complete integration guide with streaming & clarifications</summary>
 
 Simple Python examples for using OpenAI client with SGR Deep Research system.
 
@@ -203,9 +206,10 @@ print("\n\nResearch completed!")
 
 </details>
 
+---
 
 <details>
-<summary>🌐 cURL Examples</summary>
+<summary>⚡ <strong>cURL API Examples</strong> - Direct HTTP requests with agent interruption & clarification flow</summary>
 
 The system provides a fully OpenAI-compatible API with advanced agent interruption and clarification capabilities.
 
@@ -288,6 +292,8 @@ curl -X POST "http://localhost:8010/agents/{agent_id}/provide_clarification" \
 ```
 
 </details>
+
+---
 
 ## 📊 SGR Agent Workflow
 
@@ -517,8 +523,10 @@ reports/YYYYMMDD_HHMMSS_Task_Name.md
 ### Example Report
 See `example_report.md` for a complete sample of SGR research output.
 
+---
+
 <details>
-<summary>🔗 Integration Examples</summary>
+<summary>🛠️ <strong>Advanced Integration Examples</strong> - Production-ready code for streaming, monitoring & state management</summary>
 
 ### Python Client
 ```python
@@ -564,6 +572,8 @@ async def monitor_agent(agent_id: str):
 ```
 
 </details>
+
+---
 
 ## 🎯 Example Research Tasks
 
