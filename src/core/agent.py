@@ -3,6 +3,7 @@ import traceback
 import uuid
 from typing import Type
 
+import httpx
 from openai import AsyncOpenAI
 from settings import get_config
 
@@ -35,9 +36,23 @@ class SGRResearchAgent:
         self.conversation = []
         self.max_clarifications = max_clarifications
         self.max_searches = max_searches
-        self.openai_client = AsyncOpenAI(base_url=config.openai.base_url, api_key=config.openai.api_key)
+        # Initialize OpenAI client with optional proxy support
+        client_kwargs = {
+            "base_url": config.openai.base_url,
+            "api_key": config.openai.api_key
+        }
+        
+        # Add proxy if configured and not empty
+        if config.openai.proxy and config.openai.proxy.strip():
+            client_kwargs["http_client"] = self._create_http_client_with_proxy(config.openai.proxy)
+        
+        self.openai_client = AsyncOpenAI(**client_kwargs)
         self.state = AgentStatesEnum.INITED
         self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
+
+    def _create_http_client_with_proxy(self, proxy_url: str) -> httpx.AsyncClient:
+        """Create HTTP client with proxy support"""
+        return httpx.AsyncClient(proxy=proxy_url)
 
     def _prepare_tools(self) -> Type[NextStepToolStub]:
         """Prepare tool classes with current context limits"""

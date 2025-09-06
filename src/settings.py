@@ -19,6 +19,7 @@ class OpenAIConfig(BaseModel):
     model: str = Field(default="gpt-4o-mini", description="Модель для использования")
     max_tokens: int = Field(default=8000, description="Максимальное количество токенов")
     temperature: float = Field(default=0.4, ge=0.0, le=1.0, description="Температура генерации")
+    proxy: str = Field(default="", description="Proxy URL (e.g., socks5://127.0.0.1:1081 or http://127.0.0.1:8080)")
 
 
 class TavilyConfig(BaseModel):
