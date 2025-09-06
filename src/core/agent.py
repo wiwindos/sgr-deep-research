@@ -50,10 +50,6 @@ class SGRResearchAgent:
         self.state = AgentStatesEnum.INITED
         self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
 
-    def _create_http_client_with_proxy(self, proxy_url: str) -> httpx.AsyncClient:
-        """Create HTTP client with proxy support"""
-        return httpx.AsyncClient(proxy=proxy_url)
-
     def _prepare_tools(self) -> Type[NextStepToolStub]:
         """Prepare tool classes with current context limits"""
         to_exclude = []
