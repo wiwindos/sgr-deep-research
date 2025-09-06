@@ -85,7 +85,123 @@ docker-compose up -d
 curl http://localhost:8010/health
 ```
 
-## 🌐 OpenAI-Compatible API
+
+# OpenAI Client Examples for SGR Deep Research
+
+Simple Python examples for using OpenAI client with SGR Deep Research system.
+
+## Prerequisites
+
+```bash
+pip install openai
+```
+
+## Example 1: Basic Research Request
+
+Simple research query without clarifications.
+
+```python
+from openai import OpenAI
+
+# Initialize client
+client = OpenAI(
+    base_url="http://localhost:8010/v1",
+    api_key="dummy"  # Not required for local server
+)
+
+# Make research request
+response = client.chat.completions.create(
+    model="sgr-research",
+    messages=[{"role": "user", "content": "Research BMW X6 2025 prices in Russia"}],
+    stream=True,
+    temperature=0.4
+)
+
+# Print streaming response
+for chunk in response:
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+```
+
+## Example 2: Research with Clarification Support
+
+Handle agent clarification requests and continue conversation.
+
+```python
+import json
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8010/v1",
+    api_key="dummy"
+)
+
+# Step 1: Initial research request
+print("Starting research...")
+response = client.chat.completions.create(
+    model="sgr-research",
+    messages=[{"role": "user", "content": "Research AI market trends"}],
+    stream=True,
+    temperature=0
+)
+
+agent_id = None
+clarification_questions = []
+
+# Process streaming response
+for chunk in response:
+    # Extract agent ID from model field
+    if chunk.model and chunk.model.startswith("sgr_agent_"):
+        agent_id = chunk.model
+        print(f"\nAgent ID: {agent_id}")
+    
+    # Check for clarification requests
+    if chunk.choices[0].delta.tool_calls:
+        for tool_call in chunk.choices[0].delta.tool_calls:
+            if tool_call.function and tool_call.function.name == "clarification":
+                args = json.loads(tool_call.function.arguments)
+                clarification_questions = args.get("questions", [])
+    
+    # Print content
+    if chunk.choices[0].delta.content:
+        print(chunk.choices[0].delta.content, end="")
+
+# Step 2: Handle clarification if needed
+if clarification_questions and agent_id:
+    print(f"\n\nClarification needed:")
+    for i, question in enumerate(clarification_questions, 1):
+        print(f"{i}. {question}")
+    
+    # Provide clarification
+    clarification = "Focus on LLM market trends for 2024-2025, global perspective"
+    print(f"\nProviding clarification: {clarification}")
+    
+    # Continue with agent ID
+    response = client.chat.completions.create(
+        model=agent_id,  # Use agent ID as model
+        messages=[{"role": "user", "content": clarification}],
+        stream=True,
+        temperature=0
+    )
+    
+    # Print final response
+    for chunk in response:
+        if chunk.choices[0].delta.content:
+            print(chunk.choices[0].delta.content, end="")
+
+print("\n\nResearch completed!")
+```
+
+## Usage Notes
+
+- Replace `localhost:8010` with your server URL
+- The `api_key` can be any string for local server
+- Agent ID is returned in the `model` field during streaming
+- Clarification questions are sent via `tool_calls` with function name `clarification`
+- Use the agent ID as model name to continue conversation
+
+
+## 🌐 cURL Examples
 
 The system provides a fully OpenAI-compatible API with advanced agent interruption and clarification capabilities.
 
@@ -102,7 +218,7 @@ curl -X POST "http://localhost:8010/v1/chat/completions" \
   }'
 ```
 
-### 🔄 Agent Interruption & Clarification Flow
+### 🔄 cURL Examples Agent Interruption & Clarification Flow
 
 When the agent needs clarification, it returns a unique agent ID in the streaming response model field. You can then continue the conversation using this agent ID.
 
@@ -119,7 +235,7 @@ curl -X POST "http://localhost:8010/v1/chat/completions" \
   }'
 ```
 
-#### Step 2: Agent Requests Clarification
+#### cURL Examples Step 2: Agent Requests Clarification
 The streaming response includes the agent ID in the model field:
 ```json
 {
@@ -137,7 +253,7 @@ The streaming response includes the agent ID in the model field:
 }
 ```
 
-#### Step 3: Continue with Agent ID
+#### cURL Examples Step 3: Continue with Agent ID
 ```bash
 curl -X POST "http://localhost:8010/v1/chat/completions" \
   -H "Content-Type: application/json" \
@@ -150,7 +266,7 @@ curl -X POST "http://localhost:8010/v1/chat/completions" \
   }'
 ```
 
-### Agent Management
+### cURL Examples Agent Management
 ```bash
 # Get all active agents
 curl http://localhost:8010/agents
@@ -178,7 +294,7 @@ sequenceDiagram
     participant Client
     participant API as FastAPI Server
     participant Agent as SGR Agent
-    participant LLM as OpenAI LLM
+    participant LLM as LLM
     participant Tools as Research Tools
 
     Note over Client, Tools: SGR Deep Research - Agent Workflow
@@ -211,8 +327,8 @@ sequenceDiagram
             Agent->>Agent: Add clarification to context
             
         else Tool: GeneratePlan
-            Agent->>Tools: Execute plan generation
-            Tools->>Agent: Research plan created
+            Agent->>Agetn: Execute plan generation
+            Agent->>Tools: Research plan created
             
         else Tool: WebSearch  
             Agent->>Tools: Execute web search
@@ -256,11 +372,6 @@ sequenceDiagram
 4. **🔄 Plan Adaptation** - plan adaptation based on results
 5. **📝 Report Creation** - detailed report creation
 6. **✅ Completion** - task completion
-
-### Example Research Tasks:
-- "Find information about BMW X6 2025 prices in Russia"
-- "Research current AI trends"
-- "Analyze cryptocurrency market in 2024"
 
 ## 🧠 SGR vs Function Calling: When to Use Each Approach
 
@@ -375,14 +486,6 @@ prompts:
   system_prompt_file: "system_prompt.txt"               # System prompt file
 ```
 
-### Environment Variables (Alternative)
-```bash
-export OPENAI_API_KEY="your-openai-key"
-export TAVILY_API_KEY="your-tavily-key"
-export HOST="0.0.0.0"
-export PORT="8010"
-```
-
 ### Server Configuration
 ```bash
 # Custom host and port
@@ -453,24 +556,6 @@ async def monitor_agent(agent_id: str):
         print(f"Sources found: {state['sources_count']}")
 ```
 
-## 🚦 Health Check & Monitoring
-
-### Health Endpoint
-```bash
-curl http://localhost:8010/health
-```
-
-
-
-### Production Readiness
-- ✅ **Structured logging** with proper log levels
-- ✅ **Health checks** for container orchestration  
-- ✅ **Graceful error handling** with HTTPException
-- ✅ **Async/await** throughout for performance
-- ✅ **Pydantic validation** for all inputs/outputs
-- ✅ **Environment variable** support
-- ✅ **Docker containerization** with multi-stage builds
-
 ## 🎯 Example Research Tasks
 
 The SGR system excels at various research scenarios:
@@ -520,14 +605,6 @@ We welcome contributions from the community! SGR Deep Research is an open-source
    ```
 5. **Submit a pull request**
 
-### Architecture Extension Points
-
-The current architecture supports:
-
-- **Extensible reasoning schemas** in `src/core/reasoning_schemas.py`
-- **Pluggable search services** in `src/services/`
-- **Clean API interfaces** with comprehensive models
-- **Streaming responses** for real-time user experience
 
 ### Areas for Contribution
 
