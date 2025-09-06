@@ -349,20 +349,30 @@ openai:
   max_tokens: 8000                     # Maximum number of tokens
   temperature: 0.4                     # Generation temperature (0.0-1.0)
 
+# Tavily Search Configuration
 tavily:
-  api_key: "your-tavily-api-key-here"
+  api_key: "your-tavily-api-key-here"  # Required: Your Tavily API key
 
+# Search Settings
 search:
-  max_results: 10
+  max_results: 10                      # Maximum number of search results
 
+# Scraping Settings
 scraping:
-  enabled: false
-  max_pages: 5
-  content_limit: 1500
+  enabled: false                       # Enable full text scraping of found pages
+  max_pages: 5                         # Maximum pages to scrape per search
+  content_limit: 1500                  # Character limit for full content per source
 
+# Execution Settings
 execution:
-  max_steps: 6
-  reports_dir: "reports"
+  max_steps: 6                         # Maximum number of execution steps
+  reports_dir: "reports"               # Directory for saving reports
+
+# Prompts Settings
+prompts:
+  prompts_dir: "prompts"           # Directory with prompts
+  tool_function_prompt_file: "tool_function_prompt.txt"  # Tool function prompt file
+  system_prompt_file: "system_prompt.txt"               # System prompt file
 ```
 
 ### Environment Variables (Alternative)
