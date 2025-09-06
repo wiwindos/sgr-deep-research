@@ -2,10 +2,10 @@
 # Production-ready configuration for Schema-Guided Reasoning
 # Copy this file to config.yaml and fill in your API keys
 
-# OpenAI Configuration
+# OpenAI API Configuration
 openai:
   api_key: "your-openai-api-key-here"  # Required: Your OpenAI API key
-  base_url: ""                         # Optional: Alternative URL (e.g., for proxy)
+  base_url: ""                         # Optional: Alternative URL (e.g., for proxy LiteLLM/vLLM)
   model: "gpt-4o-mini"                 # Model to use
   max_tokens: 8000                     # Maximum number of tokens
   temperature: 0.4                     # Generation temperature (0.0-1.0)
