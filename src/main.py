@@ -18,15 +18,6 @@ def main():
     parser.add_argument(
         "--port", type=int, dest="port", default=int(os.environ.get("PORT", 8010)), help="Порт для прослушивания"
     )
-    parser.add_argument(
-        "--app_config",
-        dest="app_config_path",
-        required=False,
-        type=str,
-        default=os.environ.get("APP_CONFIG", "config.yaml"),
-        help="Путь к файлу конфигурации YAML",
-    )
-
     args = parser.parse_args()
 
     uvicorn.run(app, host=args.host, port=args.port, log_level="info")
