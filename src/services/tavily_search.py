@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 class TavilySearchService:
     def __init__(self):
-        config = get_config().app_config
+        config = get_config()
         self._client = TavilyClient(config.tavily.api_key)
         self._config = config
 

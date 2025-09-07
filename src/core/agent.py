@@ -23,7 +23,7 @@ logging.basicConfig(
     ],
 )
 
-config = get_config().app_config
+config = get_config()
 logger = logging.getLogger(__name__)
 
 

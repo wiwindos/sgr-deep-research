@@ -5,7 +5,7 @@ from settings import get_config
 
 from core.models import SourceData
 
-config = get_config().app_config
+config = get_config()
 
 
 class PromptLoader:
