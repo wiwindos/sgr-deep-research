@@ -1,6 +1,4 @@
-"""
-OpenAI-совместимые модели для API endpoints.
-"""
+"""OpenAI-совместимые модели для API endpoints."""
 
 from typing import Any, Dict, List, Literal
 

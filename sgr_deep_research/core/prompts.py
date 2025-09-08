@@ -1,9 +1,8 @@
 import os
 from functools import cache
 
-from settings import get_config
-
-from core.models import SourceData
+from sgr_deep_research.core.models import SourceData
+from sgr_deep_research.settings import get_config
 
 config = get_config()
 
@@ -12,16 +11,18 @@ class PromptLoader:
     @classmethod
     @cache
     def _load_prompt_file(cls, filename: str) -> str:
-        file_path = os.path.join(config.prompts.prompts_dir, filename)
+        user_file_path = os.path.join(config.prompts.prompts_dir, filename)
+        lib_file_path = os.path.join(os.path.dirname(__file__), "..", config.prompts.prompts_dir, filename)
 
-        if not os.path.exists(file_path):
-            raise FileNotFoundError(f"Prompt file not found: {file_path}")
+        for file_path in [user_file_path, lib_file_path]:
+            if os.path.exists(file_path):
+                try:
+                    with open(file_path, encoding="utf-8") as f:
+                        return f.read().strip()
+                except IOError as e:
+                    raise IOError(f"Error reading prompt file {file_path}: {e}") from e
 
-        try:
-            with open(file_path, encoding="utf-8") as f:
-                return f.read().strip()
-        except IOError as e:
-            raise IOError(f"Error reading prompt file {file_path}: {e}") from e
+        raise FileNotFoundError(f"Prompt file not found: {user_file_path} or {lib_file_path}")
 
     @classmethod
     def get_tool_function_prompt(cls) -> str:

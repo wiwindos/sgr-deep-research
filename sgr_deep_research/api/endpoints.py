@@ -1,12 +1,18 @@
 import asyncio
 import logging
 
-from core.agent import SGRResearchAgent
-from core.models import AgentStatesEnum
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 
-from api.models import AgentListItem, AgentListResponse, AgentStateResponse, ChatCompletionRequest, HealthResponse
+from sgr_deep_research.api.models import (
+    AgentListItem,
+    AgentListResponse,
+    AgentStateResponse,
+    ChatCompletionRequest,
+    HealthResponse,
+)
+from sgr_deep_research.core.agent import SGRResearchAgent
+from sgr_deep_research.core.models import AgentStatesEnum
 
 logger = logging.getLogger(__name__)
 

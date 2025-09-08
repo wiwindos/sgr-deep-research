@@ -50,7 +50,7 @@ class OpenAIStreamingGenerator(StreamingGenerator):
         super().add(f"data: {json.dumps(response)}\n\n")
 
     def add_tool_call(self, tool_call_id: str, function_name: str, arguments: str):
-        """Добавляет tool call chunk"""
+        """Добавляет tool call chunk."""
         response = {
             "id": self.id,
             "object": "chat.completion.chunk",
@@ -79,7 +79,7 @@ class OpenAIStreamingGenerator(StreamingGenerator):
         super().add(f"data: {json.dumps(response)}\n\n")
 
     def finish(self, finish_reason: str = "stop"):
-        """Завершает stream с финальным chunk и usage"""
+        """Завершает stream с финальным chunk и usage."""
         final_response = {
             "id": self.id,
             "object": "chat.completion.chunk",

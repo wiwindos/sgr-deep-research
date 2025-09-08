@@ -1,8 +1,9 @@
 import logging
 
-from core.models import SourceData
-from settings import get_config
 from tavily import TavilyClient
+
+from sgr_deep_research.core.models import SourceData
+from sgr_deep_research.settings import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +26,8 @@ class TavilySearchService:
         max_results: int | None = None,
         include_raw_content: bool = True,
     ) -> (str, list[SourceData]):
-        """
-        Perform search through Tavily API and return results with SourceData
+        """Perform search through Tavily API and return results with
+        SourceData.
 
         Args:
             query: Search query
@@ -54,7 +55,7 @@ class TavilySearchService:
         return response.get("answer", ""), sources
 
     def _convert_to_source_data(self, response: dict) -> list[SourceData]:
-        """Convert Tavily response to SourceData list"""
+        """Convert Tavily response to SourceData list."""
         sources = []
 
         for i, result in enumerate(response.get("results", [])):

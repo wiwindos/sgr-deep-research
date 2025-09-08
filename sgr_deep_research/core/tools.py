@@ -6,17 +6,15 @@ import os
 from datetime import datetime
 from typing import TYPE_CHECKING, ClassVar, Type
 
-from core.prompts import PromptLoader
+from sgr_deep_research.core.prompts import PromptLoader
 
 if TYPE_CHECKING:
-    from core.models import ResearchContext
+    from sgr_deep_research.core.models import ResearchContext
 
 from pydantic import Field, create_model
-from services.tavily_search import TavilySearchService
-from settings import get_config
 
-from core.models import SearchResult
-from core.reasoning_schemas import (
+from sgr_deep_research.core.models import SearchResult
+from sgr_deep_research.core.reasoning_schemas import (
     AdaptPlan,
     Clarification,
     CreateReport,
@@ -25,6 +23,8 @@ from core.reasoning_schemas import (
     ReportCompletion,
     WebSearch,
 )
+from sgr_deep_research.services.tavily_search import TavilySearchService
+from sgr_deep_research.settings import get_config
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -32,8 +32,8 @@ config = get_config()
 
 
 class ToolCallMixin:
-    """Mixin to provide tool handling capabilities
-    result should be a string or dumped json"""
+    """Mixin to provide tool handling capabilities result should be a string or
+    dumped json."""
 
     def __call__(self, context: ResearchContext) -> str:
         raise NotImplementedError("Execute method must be implemented by subclass")
@@ -41,7 +41,8 @@ class ToolCallMixin:
 
 class ClarificationTool(ToolCallMixin, Clarification):
     def __call__(self, context: ResearchContext) -> str:
-        """Handle clarification requests when facing ambiguous user requests"""
+        """Handle clarification requests when facing ambiguous user
+        requests."""
 
         # Mark clarification as used to prevent cycling
         context.clarification_used = True
@@ -65,7 +66,7 @@ class ClarificationTool(ToolCallMixin, Clarification):
 
 class GeneratePlanTool(ToolCallMixin, GeneratePlan):
     def __call__(self, context: ResearchContext) -> str:
-        """Generate and store research plan based on clear user request"""
+        """Generate and store research plan based on clear user request."""
         logger.info("📋 Research Plan Created:")
         logger.info(f"🎯 Goal: {self.research_goal}")
         logger.info(f"📝 Steps: {len(self.planned_steps)}")
@@ -82,7 +83,7 @@ class GeneratePlanTool(ToolCallMixin, GeneratePlan):
 
 class AdaptPlanTool(ToolCallMixin, AdaptPlan):
     def __call__(self, context: ResearchContext) -> str:
-        """Adapt research plan based on new findings"""
+        """Adapt research plan based on new findings."""
         logger.info("\n🔄 PLAN ADAPTED")
         logger.info("📝 Changes:")
         for change in self.plan_changes:
@@ -143,7 +144,7 @@ class CreateReportTool(ToolCallMixin, CreateReport):
 
 class ReportCompletionTool(ToolCallMixin, ReportCompletion):
     def __call__(self, context: ResearchContext) -> str:
-        """Complete research task"""
+        """Complete research task."""
 
         logger.info("\n✅ RESEARCH COMPLETED")
         logger.info(f"📋 Status: {self.status}")
@@ -166,7 +167,7 @@ class WebSearchTool(ToolCallMixin, WebSearch):
         self._search_service = TavilySearchService()
 
     def __call__(self, context: ResearchContext) -> str:
-        """Execute web search using TavilySearchService"""
+        """Execute web search using TavilySearchService."""
 
         logger.info(f"🔍 Search query: '{self.query}'")
 
@@ -210,13 +211,14 @@ class WebSearchTool(ToolCallMixin, WebSearch):
 
 
 class NextStepToolStub(NextStep, ToolCallMixin):
-    """Stub class for correct autocomplete"""
+    """Stub class for correct autocomplete."""
 
     pass
 
 
 class NextStepToolsBuilder:
-    """Builder for NextStepTool with dynamic union tool function type on pydantic models level"""
+    """Builder for NextStepTool with dynamic union tool function type on
+    pydantic models level."""
 
     tools: ClassVar[list[Type[ToolCallMixin]]] = [
         ClarificationTool,

@@ -2,11 +2,11 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from core.prompts import PromptLoader
+from sgr_deep_research.core.prompts import PromptLoader
 
 
 class Clarification(BaseModel):
-    """Ask clarifying questions when facing ambiguous requests"""
+    """Ask clarifying questions when facing ambiguous requests."""
 
     tool: Literal["clarification"]
     reasoning: str = Field(description="Why clarification is needed")
@@ -16,7 +16,7 @@ class Clarification(BaseModel):
 
 
 class GeneratePlan(BaseModel):
-    """Generate research plan based on clear user request"""
+    """Generate research plan based on clear user request."""
 
     tool: Literal["generate_plan"]
     reasoning: str = Field(description="Justification for research approach")
@@ -26,7 +26,7 @@ class GeneratePlan(BaseModel):
 
 
 class WebSearch(BaseModel):
-    """Search for information with credibility focus"""
+    """Search for information with credibility focus."""
 
     tool: Literal["web_search"]
     reasoning: str = Field(description="Why this search is needed and what to expect")
@@ -40,7 +40,7 @@ class WebSearch(BaseModel):
 
 
 class AdaptPlan(BaseModel):
-    """Adapt research plan based on new findings"""
+    """Adapt research plan based on new findings."""
 
     tool: Literal["adapt_plan"]
     reasoning: str = Field(description="Why plan needs adaptation based on new data")
@@ -51,7 +51,7 @@ class AdaptPlan(BaseModel):
 
 
 class CreateReport(BaseModel):
-    """Create comprehensive research report with citations"""
+    """Create comprehensive research report with citations."""
 
     tool: Literal["create_report"]
     reasoning: str = Field(description="Why ready to create report now")
@@ -67,7 +67,7 @@ class CreateReport(BaseModel):
 
 
 class ReportCompletion(BaseModel):
-    """Complete research task"""
+    """Complete research task."""
 
     tool: Literal["report_completion"]
     reasoning: str = Field(description="Why research is now complete")

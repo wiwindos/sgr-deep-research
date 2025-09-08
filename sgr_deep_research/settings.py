@@ -1,11 +1,11 @@
-"""
-Модуль настроек приложения с использованием Pydantic и EnvYAML.
+"""Модуль настроек приложения с использованием Pydantic и EnvYAML.
+
 Загружает конфигурацию из YAML файла с поддержкой переменных окружения.
 """
 
 import os
-from pathlib import Path
 from functools import cache
+from pathlib import Path
 
 from envyaml import EnvYAML
 from pydantic import BaseModel, Field

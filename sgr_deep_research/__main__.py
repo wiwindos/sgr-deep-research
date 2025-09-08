@@ -1,11 +1,11 @@
-"""
-Основная точка входа для SGR Deep Research API сервера.
-"""
+"""Основная точка входа для SGR Deep Research API сервера."""
 
-import os
-import uvicorn
 import argparse
-from api.endpoints import app
+import os
+
+import uvicorn
+
+from sgr_deep_research.api.endpoints import app
 
 
 def main():

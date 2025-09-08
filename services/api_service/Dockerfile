@@ -7,15 +7,14 @@ ENV UV_COMPILE_BYTECODE=1 \
 
 WORKDIR /app
 
-COPY pyproject.toml ./
+COPY requirements.txt ./
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv venv /opt/venv && \
-    uv pip install --python /opt/venv/bin/python .
+    uv pip install --python /opt/venv/bin/python -r requirements.txt
 
-    
+
 FROM python:3.13-slim-bookworm AS runner
-LABEL authors="virrius"
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -35,4 +34,4 @@ COPY --from=builder --chown=appuser:appgroup /opt/venv /opt/venv
 WORKDIR /app
 USER appuser:appgroup
 
-ENTRYPOINT ["python3", "main.py"]
+ENTRYPOINT ["python3", "sgr_deep_research"]

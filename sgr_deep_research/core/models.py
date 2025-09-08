@@ -6,11 +6,11 @@ from typing import TYPE_CHECKING
 from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
-    from core.reasoning_schemas import NextStep
+    from sgr_deep_research.core.reasoning_schemas import NextStep
 
 
 class SourceData(BaseModel):
-    """Data about a research source"""
+    """Data about a research source."""
 
     number: int = Field(description="Citation number")
     title: str | None = Field(default="Untitled", description="Page title")
@@ -24,7 +24,7 @@ class SourceData(BaseModel):
 
 
 class SearchResult(BaseModel):
-    """Search result with query, answer, and sources"""
+    """Search result with query, answer, and sources."""
 
     query: str = Field(description="Search query")
     answer: str = Field(default="", description="AI-generated answer from search")
@@ -36,11 +36,10 @@ class SearchResult(BaseModel):
 
 
 class ResearchContext:
-    """
-    Context for managing research state and tracking search progress.
+    """Context for managing research state and tracking search progress.
 
-    Tracks the research plan, searches performed, sources found,
-    and prevents cycling through clarification mechanisms.
+    Tracks the research plan, searches performed, sources found, and
+    prevents cycling through clarification mechanisms.
     """
 
     def __init__(self):

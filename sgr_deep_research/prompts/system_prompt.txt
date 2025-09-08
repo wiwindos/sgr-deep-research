@@ -26,7 +26,7 @@ WORKFLOW:
 
 ADAPTIVITY: Actively change plan when discovering new data.
 
-LANGUAGE ADAPTATION: Always respond and create reports in the SAME LANGUAGE as the user's request. 
+LANGUAGE ADAPTATION: Always respond and create reports in the SAME LANGUAGE as the user's request.
 If user writes in Russian - respond in Russian, if in English - respond in English.
 
 REPORT CREATION GUIDELINES:

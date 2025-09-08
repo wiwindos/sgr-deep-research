@@ -5,13 +5,13 @@ from typing import Type
 
 import httpx
 from openai import AsyncOpenAI
-from settings import get_config
 
-from core.models import AgentStatesEnum, ResearchContext
-from core.prompts import PromptLoader
-from core.reasoning_schemas import Clarification, ReportCompletion
-from core.stream import OpenAIStreamingGenerator
-from core.tools import ClarificationTool, NextStepToolsBuilder, NextStepToolStub, WebSearchTool
+from sgr_deep_research.core.models import AgentStatesEnum, ResearchContext
+from sgr_deep_research.core.prompts import PromptLoader
+from sgr_deep_research.core.reasoning_schemas import Clarification, ReportCompletion
+from sgr_deep_research.core.stream import OpenAIStreamingGenerator
+from sgr_deep_research.core.tools import ClarificationTool, NextStepToolsBuilder, NextStepToolStub, WebSearchTool
+from sgr_deep_research.settings import get_config
 
 # Настройка базового логирования
 logging.basicConfig(
@@ -37,11 +37,8 @@ class SGRResearchAgent:
         self.max_clarifications = max_clarifications
         self.max_searches = max_searches
         # Initialize OpenAI client with optional proxy support
-        client_kwargs = {
-            "base_url": config.openai.base_url,
-            "api_key": config.openai.api_key
-        }
-        
+        client_kwargs = {"base_url": config.openai.base_url, "api_key": config.openai.api_key}
+
         # Add proxy if configured and not empty
         if config.openai.proxy.strip():
             client_kwargs["http_client"] = httpx.AsyncClient(proxy=config.openai.proxy)
@@ -51,7 +48,7 @@ class SGRResearchAgent:
         self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
 
     def _prepare_tools(self) -> Type[NextStepToolStub]:
-        """Prepare tool classes with current context limits"""
+        """Prepare tool classes with current context limits."""
         to_exclude = []
         if self._context.clarifications_used >= self.max_clarifications:
             to_exclude.append(ClarificationTool)
@@ -60,7 +57,8 @@ class SGRResearchAgent:
         return NextStepToolsBuilder.build_NextStepTools(exclude=to_exclude)
 
     def _prepare_context(self) -> list[dict]:
-        """Prepare conversation context with system prompt and current state"""
+        """Prepare conversation context with system prompt and current
+        state."""
         system_prompt = PromptLoader.get_system_prompt(
             user_request=self.task, sources=list(self._context.sources.values())
         )
@@ -108,13 +106,13 @@ class SGRResearchAgent:
    📋 Plan Status: '{result.plan_status[:100]}...'
    🔍 Searches Done: {self._context.searches_used}
    🔍 Clarifications Done: {self._context.clarifications_used}
-   🔍  Sources: 
+   🔍  Sources:
 {sources}
    ✅ Enough Data: {result.enough_data}
    📝 Remaining Steps: {result.remaining_steps}
    🏁 Task Completed: {result.task_completed}
    🔧 Tool: {result.function}
-   
+
    ➡️ Next Step: {next_step} using {tool_name}
    💭 Reasoning: {reasoning}...
 ###############################################"""
@@ -123,7 +121,7 @@ class SGRResearchAgent:
     async def execute(
         self,
     ):
-        """Execute research task using SGR"""
+        """Execute research task using SGR."""
         self.conversation.extend(
             [
                 {
