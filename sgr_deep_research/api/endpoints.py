@@ -11,7 +11,7 @@ from sgr_deep_research.api.models import (
     ChatCompletionRequest,
     HealthResponse,
 )
-from sgr_deep_research.core.agent import SGRResearchAgent
+from sgr_deep_research.core.agents.sgr_agent import SGRResearchAgent
 from sgr_deep_research.core.models import AgentStatesEnum
 
 logger = logging.getLogger(__name__)

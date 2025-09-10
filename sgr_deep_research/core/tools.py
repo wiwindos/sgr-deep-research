@@ -11,7 +11,7 @@ from sgr_deep_research.core.prompts import PromptLoader
 if TYPE_CHECKING:
     from sgr_deep_research.core.models import ResearchContext
 
-from pydantic import Field, create_model
+from pydantic import BaseModel, Field, create_model
 
 from sgr_deep_research.core.models import SearchResult
 from sgr_deep_research.core.reasoning_schemas import (
@@ -21,7 +21,7 @@ from sgr_deep_research.core.reasoning_schemas import (
     GeneratePlan,
     NextStep,
     ReportCompletion,
-    WebSearch,
+    WebSearch, Reasoning,
 )
 from sgr_deep_research.services.tavily_search import TavilySearchService
 from sgr_deep_research.settings import get_config
@@ -31,15 +31,22 @@ logger.setLevel(logging.DEBUG)
 config = get_config()
 
 
-class ToolCallMixin:
-    """Mixin to provide tool handling capabilities result should be a string or
-    dumped json."""
+class BaseTool(BaseModel):
+    """Mixin to provide tool handling capabilities
+    result should be a string or dumped json"""
+    tool: ClassVar[str] = None
+    description: ClassVar[str] = None
 
     def __call__(self, context: ResearchContext) -> str:
         raise NotImplementedError("Execute method must be implemented by subclass")
 
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        cls.tool = cls.tool or cls.__name__.lower()
+        cls.description = cls.description or cls.__doc__ or ""
 
-class ClarificationTool(ToolCallMixin, Clarification):
+
+class ClarificationTool(BaseTool, Clarification):
     def __call__(self, context: ResearchContext) -> str:
         """Handle clarification requests when facing ambiguous user
         requests."""
@@ -64,7 +71,7 @@ class ClarificationTool(ToolCallMixin, Clarification):
         return "\n".join(self.questions)
 
 
-class GeneratePlanTool(ToolCallMixin, GeneratePlan):
+class GeneratePlanTool(BaseTool, GeneratePlan):
     def __call__(self, context: ResearchContext) -> str:
         """Generate and store research plan based on clear user request."""
         logger.info("📋 Research Plan Created:")
@@ -81,7 +88,7 @@ class GeneratePlanTool(ToolCallMixin, GeneratePlan):
         )
 
 
-class AdaptPlanTool(ToolCallMixin, AdaptPlan):
+class AdaptPlanTool(BaseTool, AdaptPlan):
     def __call__(self, context: ResearchContext) -> str:
         """Adapt research plan based on new findings."""
         logger.info("\n🔄 PLAN ADAPTED")
@@ -98,7 +105,7 @@ class AdaptPlanTool(ToolCallMixin, AdaptPlan):
         )
 
 
-class CreateReportTool(ToolCallMixin, CreateReport):
+class CreateReportTool(BaseTool, CreateReport):
     def __call__(self, context: ResearchContext) -> str:
         # Debug: Log CreateReport fields
         logger.info("📝 CREATE REPORT FULL DEBUG:")
@@ -142,7 +149,7 @@ class CreateReportTool(ToolCallMixin, CreateReport):
         return json.dumps(report, indent=2, ensure_ascii=False)
 
 
-class ReportCompletionTool(ToolCallMixin, ReportCompletion):
+class ReportCompletionTool(BaseTool, ReportCompletion):
     def __call__(self, context: ResearchContext) -> str:
         """Complete research task."""
 
@@ -161,7 +168,7 @@ class ReportCompletionTool(ToolCallMixin, ReportCompletion):
         )
 
 
-class WebSearchTool(ToolCallMixin, WebSearch):
+class WebSearchTool(BaseTool, WebSearch):
     def __init__(self, **data):
         super().__init__(**data)
         self._search_service = TavilySearchService()
@@ -210,17 +217,27 @@ class WebSearchTool(ToolCallMixin, WebSearch):
         return formatted_result
 
 
-class NextStepToolStub(NextStep, ToolCallMixin):
+class ReasoningTool(Reasoning, BaseTool):
+
+    def __call__(self, *args, **kwargs):
+        return self.model_dump_json(
+            indent=2,
+            exclude={
+                "reasoning",
+            },
+        )
+
+
+class NextStepToolStub(NextStep, BaseTool):
     """Stub class for correct autocomplete."""
 
     pass
-
 
 class NextStepToolsBuilder:
     """Builder for NextStepTool with dynamic union tool function type on
     pydantic models level."""
 
-    tools: ClassVar[list[Type[ToolCallMixin]]] = [
+    tools: ClassVar[list[Type[BaseTool]]] = [
         ClarificationTool,
         GeneratePlanTool,
         WebSearchTool,
@@ -230,7 +247,7 @@ class NextStepToolsBuilder:
     ]
 
     @classmethod
-    def _create_tool_types_union(cls, exclude: list[Type[ToolCallMixin]] | None = None):
+    def _create_tool_types_union(cls, exclude: list[Type[BaseTool]] | None = None):
         if exclude is None:
             exclude = []
         enabled_tools_types = [tool for tool in cls.tools if tool not in exclude]
@@ -243,7 +260,7 @@ class NextStepToolsBuilder:
         return reduce(operator.or_, enabled_tools_types)
 
     @classmethod
-    def build_NextStepTools(cls, exclude: list[Type[ToolCallMixin]] | None = None) -> Type[NextStepToolStub]:
+    def build_NextStepTools(cls, exclude: list[Type[BaseTool]] | None = None) -> Type[NextStepToolStub]:
         tool_prompt = PromptLoader.get_tool_function_prompt()
         return create_model(
             "NextStepTools",

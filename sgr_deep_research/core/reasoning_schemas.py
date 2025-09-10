@@ -79,8 +79,7 @@ class ReportCompletion(BaseModel):
 # MAIN SGR SCHEMA - Adaptive Reasoning Core
 # =============================================================================
 
-
-class NextStep(BaseModel):
+class Reasoning(BaseModel):
     """SGR Core - Determines next reasoning step with adaptive planning"""
 
     # Reasoning chain - step-by-step thinking process (helps stabilize model)
@@ -99,6 +98,11 @@ class NextStep(BaseModel):
     # Next step planning
     remaining_steps: list[str] = Field(description="1-3 remaining steps to complete task", min_length=1, max_length=3)
     task_completed: bool = Field(description="Is the research task finished?")
+
+
+class NextStep(Reasoning):
+    """SGR Core - Determines next reasoning step with adaptive planning, choosing appropriate tool"""
+
 
     # Tool routing with clarification-first bias
     function: (
