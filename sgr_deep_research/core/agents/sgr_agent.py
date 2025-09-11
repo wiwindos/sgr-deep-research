@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 class SGRResearchAgent:
+    """Agent for deep research tasks using SGR framework"""
     def __init__(
         self,
         task: str,

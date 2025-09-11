@@ -34,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 class SGRToolCallingResearchAgent:
+    """Agent that uses OpenAI native function calling to select and execute tools based on SGR like reasoning scheme"""
     def __init__(
         self,
         task: str,

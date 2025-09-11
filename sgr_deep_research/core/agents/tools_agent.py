@@ -34,7 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 class ToolCallingResearchAgent:
-    """Tool Calling Research Agent relying entirely on OpenAI function calling"""
+    """Tool Calling Research Agent relying entirely on OpenAI native function calling"""
     def __init__(
         self,
         task: str,
