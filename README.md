@@ -4,11 +4,11 @@ Web Interface
 
 <img width="1530" height="1076" alt="image" src="https://github.com/user-attachments/assets/63cb683f-7271-4780-a84c-d9c176fc829d" />
 
-# Terminal CLI Viedo
+Terminal CLI Viedo
 
 https://github.com/user-attachments/assets/a5e34116-7853-43c2-ba93-2db811b8584a
 
-# Web Interface Video
+Web Interface Video
 
 
 https://github.com/user-attachments/assets/9e1c46c0-0c13-45dd-8b35-a3198f946451
