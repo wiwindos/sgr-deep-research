@@ -1,4 +1,5 @@
 # 🧠 SGR Deep Research - Open-Source Schema-Guided Reasoning System
+<img width="1530" height="1076" alt="image" src="https://github.com/user-attachments/assets/63cb683f-7271-4780-a84c-d9c176fc829d" />
 
 https://github.com/user-attachments/assets/a5e34116-7853-43c2-ba93-2db811b8584a
 
