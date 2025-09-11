@@ -93,7 +93,7 @@ async def provide_clarification(agent_id: str, request: ChatCompletionRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error completion: {e}")
-        raise HTTPException(status_code=500, detail="str(e)")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/v1/chat/completions")
@@ -128,4 +128,4 @@ async def create_chat_completion(request: ChatCompletionRequest):
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error(f"Error completion: {e}")
-        raise HTTPException(status_code=500, detail="str(e)")
+        raise HTTPException(status_code=500, detail=str(e))
