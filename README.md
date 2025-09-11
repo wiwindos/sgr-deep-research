@@ -1,6 +1,6 @@
 # 🧠 SGR Deep Research - Open-Source Schema-Guided Reasoning System
 
-# Web Interface https://github.com/vakovalskii/sgr-deep-research/tree/gui_app
+Web Interface
 
 <img width="1530" height="1076" alt="image" src="https://github.com/user-attachments/assets/63cb683f-7271-4780-a84c-d9c176fc829d" />
 
