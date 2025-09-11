@@ -26,6 +26,7 @@ class TavilyConfig(BaseModel):
     """Настройки Tavily Search API."""
 
     api_key: str = Field(description="Tavily API ключ")
+    api_base_url: str = Field(default="https://api.tavily.com", description="Базовый URL Tavily API")
 
 
 class SearchConfig(BaseModel):
@@ -57,6 +58,7 @@ class ExecutionConfig(BaseModel):
 
     max_steps: int = Field(default=6, gt=0, description="Максимальное количество шагов выполнения")
     reports_dir: str = Field(default="reports", description="Директория для сохранения отчетов")
+    logs_dir: str = Field(default="logs", description="Директория для сохранения логов работы бота")
 
 
 class AppConfig(BaseModel):

@@ -14,6 +14,7 @@ openai:
 # Tavily Search Configuration
 tavily:
   api_key: "your-tavily-api-key-here"  # Required: Your Tavily API key
+  api_base_url: "https://api.tavily.com"  # Tavily API base URL
 
 # Search Settings
 search:
@@ -29,6 +30,7 @@ scraping:
 execution:
   max_steps: 6                         # Maximum number of execution steps
   reports_dir: "reports"               # Directory for saving reports
+  logs_dir: "logs"               # Directory for saving reports
 
 # Prompts Settings
 prompts:

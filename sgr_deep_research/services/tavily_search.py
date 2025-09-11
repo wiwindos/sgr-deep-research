@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 class TavilySearchService:
     def __init__(self):
         config = get_config()
-        self._client = TavilyClient(config.tavily.api_key)
+        self._client = TavilyClient(api_key=config.tavily.api_key, api_base_url=config.tavily.api_base_url)
         self._config = config
 
     @staticmethod
@@ -32,7 +32,6 @@ class TavilySearchService:
         Args:
             query: Search query
             max_results: Maximum number of results (default from config)
-            include_answer: Include AI answer in results
             include_raw_content: Include raw page content
 
         Returns:
@@ -45,14 +44,13 @@ class TavilySearchService:
         response = self._client.search(
             query=query,
             max_results=max_results,
-            include_answer=True,
             include_raw_content=include_raw_content,
         )
 
         # Convert results to SourceData
         sources = self._convert_to_source_data(response)
 
-        return response.get("answer", ""), sources
+        return sources
 
     def _convert_to_source_data(self, response: dict) -> list[SourceData]:
         """Convert Tavily response to SourceData list."""

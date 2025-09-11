@@ -1,6 +1,8 @@
+import json
 import logging
 import traceback
 import uuid
+from datetime import datetime
 from typing import Type
 
 import httpx
@@ -8,18 +10,23 @@ from openai import AsyncOpenAI
 
 from sgr_deep_research.core.models import AgentStatesEnum, ResearchContext
 from sgr_deep_research.core.prompts import PromptLoader
-from sgr_deep_research.core.reasoning_schemas import Clarification, ReportCompletion
 from sgr_deep_research.core.stream import OpenAIStreamingGenerator
-from sgr_deep_research.core.tools import ClarificationTool, NextStepToolsBuilder, NextStepToolStub, WebSearchTool
+from sgr_deep_research.core.tools import (
+    ClarificationTool,
+    NextStepToolsBuilder,
+    NextStepToolStub,
+    ResearchCompletionTool,
+    WebSearchTool,
+)
+from sgr_deep_research.core.tools.base import BaseTool, ReasoningTool, system_agent_tools
+from sgr_deep_research.core.tools.research import CreateReportTool, research_agent_tools
 from sgr_deep_research.settings import get_config
 
 logging.basicConfig(
     level=logging.INFO,
     encoding="utf-8",
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.StreamHandler()
-    ],
+    format="%(asctime)s - %(name)s - %(lineno)d - %(levelname)s -  - %(message)s",
+    handlers=[logging.StreamHandler()],
 )
 
 config = get_config()
@@ -27,14 +34,25 @@ logger = logging.getLogger(__name__)
 
 
 class SGRResearchAgent:
-    def __init__(self, task: str, max_clarifications: int = 3, max_searches: int = 4):
+    def __init__(
+        self,
+        task: str,
+        toolkit: list[Type[BaseTool]] | None = None,
+        max_clarifications: int = 3,
+        max_searches: int = 4,
+        max_iterations: int = 10,
+    ):
         self.id = f"sgr_agent_{uuid.uuid4()}"
         self.task = task
+        self.toolkit = [*system_agent_tools, *research_agent_tools, *(toolkit if toolkit else [])]
 
         self._context = ResearchContext()
         self.conversation = []
+        self.log = []
+
         self.max_clarifications = max_clarifications
         self.max_searches = max_searches
+        self.max_iterations = max_iterations
         # Initialize OpenAI client with optional proxy support
         client_kwargs = {"base_url": config.openai.base_url, "api_key": config.openai.api_key}
 
@@ -43,17 +61,25 @@ class SGRResearchAgent:
             client_kwargs["http_client"] = httpx.AsyncClient(proxy=config.openai.proxy)
 
         self.openai_client = AsyncOpenAI(**client_kwargs)
-        self.state = AgentStatesEnum.INITED
         self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
 
     def _prepare_tools(self) -> Type[NextStepToolStub]:
         """Prepare tool classes with current context limits."""
-        to_exclude = []
+        tools = set(self.toolkit)
+        if self._context.iteration >= self.max_iterations:
+            tools = [
+                CreateReportTool,
+                ResearchCompletionTool,
+            ]
         if self._context.clarifications_used >= self.max_clarifications:
-            to_exclude.append(ClarificationTool)
+            tools -= {
+                ClarificationTool,
+            }
         if self._context.searches_used >= self.max_searches:
-            to_exclude.append(WebSearchTool)
-        return NextStepToolsBuilder.build_NextStepTools(exclude=to_exclude)
+            tools -= {
+                WebSearchTool,
+            }
+        return NextStepToolsBuilder.build_NextStepTools(list(tools))
 
     def _prepare_context(self) -> list[dict]:
         """Prepare conversation context with system prompt and current
@@ -65,9 +91,7 @@ class SGRResearchAgent:
         conversation.extend(self.conversation)
         return conversation
 
-    async def _openai_streaming_request(
-        self
-    ) -> NextStepToolStub | None:
+    async def _openai_streaming_request(self) -> NextStepToolStub | None:
         async with self.openai_client.chat.completions.stream(
             model=config.openai.model,
             response_format=self._prepare_tools(),
@@ -86,13 +110,11 @@ class SGRResearchAgent:
         self.conversation.append({"role": "user", "content": f"CLARIFICATIONS: {clarifications}"})
         self._context.clarifications_used += 1
         self._context.clarification_received.set()
-        self.state = AgentStatesEnum.RESEARCHING
+        self._context.state = AgentStatesEnum.RESEARCHING
         logger.info(f"✅ Clarification received: {clarifications[:300]}...")
 
-    def _log_step(self, result: NextStepToolStub):
+    def _log_reasoning(self, result: ReasoningTool) -> None:
         next_step = result.remaining_steps[0] if result.remaining_steps else "Completing"
-        reasoning = result.function.reasoning[:500] if hasattr(result.function, "reasoning") else "No reasoning"
-        tool_name = result.function.tool if hasattr(result.function, "tool") else str(type(result.function).__name__)
         sources = "\n         ".join([str(source) for source in self._context.sources.values()])
         logger.info(
             f"""
@@ -108,12 +130,43 @@ class SGRResearchAgent:
    ✅ Enough Data: {result.enough_data}
    📝 Remaining Steps: {result.remaining_steps}
    🏁 Task Completed: {result.task_completed}
-   🔧 Tool: {result.function}
-
-   ➡️ Next Step: {next_step} using {tool_name}
-   💭 Reasoning: {reasoning}...
+   ➡️ Next Step: {next_step}
 ###############################################"""
         )
+        self.log.append(
+            {
+                "step_number": self._context.iteration,
+                "timestamp": datetime.now().isoformat(),
+                "step_type": "reasoning",
+                "agent_reasoning": result.model_dump(),
+            }
+        )
+
+    def _log_tool_execution(self, tool: BaseTool, result: str):
+        logger.info(
+            f"🛠️  Tool Execution Result:\n"
+            f"   🔧 Tool: {tool.tool_name}\n"
+            f"   📄 Result Preview: '{result[:1000]}...'\n"
+        )
+        self.log.append(
+            {
+                "step_number": self._context.iteration,
+                "timestamp": datetime.now().isoformat(),
+                "step_type": "tool_execution",
+                "tool_name": tool.tool_name,
+                "agent_tool_execution": tool.model_dump(),
+                "agent_tool_execution_result": result,
+            }
+        )
+
+    def _save_agent_log(self):
+        agent_log = {
+            "id": self.id,
+            "task": self.task,
+            "context": self._context.agent_state(),
+            "log": self.log,
+        }
+        json.dump(agent_log, open(f"{self.id}-log.json", "w", encoding="utf-8"), indent=2, ensure_ascii=False)
 
     async def execute(
         self,
@@ -130,29 +183,25 @@ class SGRResearchAgent:
         )
         # Execute reasoning steps
         try:
-            for i in range(config.execution.max_steps):
-                step_id = f"step-{i + 1}"
-                logger.info(f"agent {self.id} Step {step_id}")
-                try:
-                    result: NextStepToolStub = await self._openai_streaming_request()
-                    self._log_step(result)
-                    self._context.current_state = result
+            while self._context.state not in AgentStatesEnum.FINISH_STATES:
+                self._context.iteration += 1
+                step_id = f"step-{self._context.iteration}"
+                logger.info(f"agent {self.id} Step {step_id} started")
 
-                except Exception as e:
-                    logger.error(f"❌ LLM request error: {str(e)}")
-                    break
+                result: NextStepToolStub = await self._openai_streaming_request()
+                self._log_reasoning(result)
+                self._context.current_state = result
 
-                next_step = result.remaining_steps[0] if result.remaining_steps else "Completing"
                 self.conversation.append(
                     {
                         "role": "assistant",
-                        "content": next_step,
+                        "content": result.remaining_steps[0] if result.remaining_steps else "Completing",
                         "tool_calls": [
                             {
                                 "type": "function",
                                 "id": str(step_id),
                                 "function": {
-                                    "name": result.function.tool,
+                                    "name": result.function.tool_name,
                                     "arguments": result.function.model_dump_json(),
                                 },
                             }
@@ -160,34 +209,39 @@ class SGRResearchAgent:
                     }
                 )
                 self.streaming_generator.add_tool_call(
-                    str(step_id), result.function.tool, result.function.model_dump_json()
+                    str(step_id), result.function.tool_name, result.function.model_dump_json()
                 )
 
                 tool_call_result = result.function(self._context)  # noqa
+                self._log_tool_execution(result.function, tool_call_result)
 
-                self.conversation.append({"role": "tool", "content": tool_call_result, "tool_call_id": step_id})
                 self.streaming_generator.add_chunk(f"{tool_call_result}\n")
+                self.conversation.append({"role": "tool", "content": tool_call_result, "tool_call_id": step_id})
 
-                if isinstance(result.function, Clarification):
-                    self.state = AgentStatesEnum.WAITING_FOR_CLARIFICATION
+                if isinstance(result.function, ClarificationTool):
+                    logger.info("\n⏸️  Research paused - please answer questions")
+                    logger.info(tool_call_result)
+                    self._context.state = AgentStatesEnum.WAITING_FOR_CLARIFICATION
                     self._context.clarification_received.clear()
                     await self._context.clarification_received.wait()
                     continue
-                if result.task_completed or isinstance(result.function, ReportCompletion):
-                    self.state = AgentStatesEnum.COMPLETED
-                    logger.info("✅ Research task completed.")
-                    break
+
         except Exception as e:
             logger.error(f"❌ Agent execution error: {str(e)}")
+            self._context.state = AgentStatesEnum.FAILED
             traceback.print_exc()
         finally:
             self.streaming_generator.finish()
+            self._save_agent_log()
 
 
 async def main():
-    agent = SGRResearchAgent(task="Каковы последние достижения в области искусственного интеллекта?")
+    # agent = SGRResearchAgent(task="Research the current state of Tesla's Full Self-Driving technology in 2025. I need to understand if Tesla has achieved Level 5 autonomous driving as Elon Musk promised it would be ready by 2024, and whether regulatory approval has been granted worldwide.")
+    agent = SGRResearchAgent(task="Сравни цену на биткоин за 2023 и 2024 год")
     await agent.execute()
+
 
 if __name__ == "__main__":
     import asyncio
+
     asyncio.run(main())
