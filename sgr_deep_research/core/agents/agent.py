@@ -164,7 +164,6 @@ class BaseAgent:
         )
         try:
             while self._context.state not in AgentStatesEnum.FINISH_STATES.value:
-                print(self._context.state, AgentStatesEnum.FINISH_STATES, AgentStatesEnum.FINISH_STATES.value)
                 self._context.iteration += 1
                 logger.info(f"agent {self.id} Step {self._context.iteration} started")
 
