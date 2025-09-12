@@ -133,11 +133,11 @@ class BaseAgent:
         raise NotImplementedError("_prepare_tools must be implemented by subclass")
 
     async def _reasoning_phase(self) -> ReasoningTool:
-        """Call LLM to decide next action."""
+        """Call LLM to decide next action based on current context."""
         raise NotImplementedError("_reasoning_phase must be implemented by subclass")
 
     async def _select_action_phase(self, reasoning: ReasoningTool) -> BaseTool:
-        """Call Tool for the action decided in reasoning phase.
+        """Select most suitable tool for the action decided in reasoning phase.
 
         Returns the tool suitable for the action.
         """
@@ -146,7 +146,7 @@ class BaseAgent:
     async def _action_phase(self, tool: BaseTool) -> str:
         """Call Tool for the action decided in select_action phase.
 
-        Returns the tool suitable for the action.
+        Returns string or dumped json result of the tool execution.
         """
         raise NotImplementedError("_action_phase must be implemented by subclass")
 

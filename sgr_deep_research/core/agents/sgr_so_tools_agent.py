@@ -36,7 +36,7 @@ class SGRSOToolCallingResearchAgent(SGRToolCallingResearchAgent):
             max_iterations=max_iterations,
             max_searches=max_searches,
         )
-        self.id = f"sgr_tool_calling_agent_{uuid.uuid4()}"
+        self.id = f"sgr_so_tool_calling_agent_{uuid.uuid4()}"
 
     async def _reasoning_phase(self) -> ReasoningTool:
         async with self.openai_client.chat.completions.stream(
