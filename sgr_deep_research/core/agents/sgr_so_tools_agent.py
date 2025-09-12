@@ -88,19 +88,3 @@ class SGRSOToolCallingResearchAgent(SGRToolCallingResearchAgent):
         )
         self._log_reasoning(reasoning)
         return reasoning
-
-
-async def main():
-    agent = SGRSOToolCallingResearchAgent(
-        task="Research the current state of Tesla's Full Self-Driving technology \
-    in 2025. I need to understand if Tesla has achieved Level 5 autonomous driving as Elon Musk promised\
-    it would be ready by 2024, and whether regulatory approval has been granted worldwide."
-    )
-    # agent = SGRToolCallingResearchAgent(task="Сравни цену на биткоин за 2023 и 2024 год")
-    await agent.execute()
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(main())
