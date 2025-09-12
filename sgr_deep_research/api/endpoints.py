@@ -65,15 +65,10 @@ async def get_available_models():
     """Get list of available agent models."""
     return {
         "data": [
-            {
-                "id": model.value,
-                "object": "model",
-                "created": 1234567890,
-                "owned_by": "sgr-deep-research"
-            } 
+            {"id": model.value, "object": "model", "created": 1234567890, "owned_by": "sgr-deep-research"}
             for model in AgentModel
         ],
-        "object": "list"
+        "object": "list",
     }
 
 
@@ -116,7 +111,8 @@ async def provide_clarification(agent_id: str, request: ChatCompletionRequest):
 
 
 def _is_agent_id(model_str: str) -> bool:
-    """Check if model string is an agent ID (contains underscore and UUID-like format)."""
+    """Check if model string is an agent ID (contains underscore and UUID-like
+    format)."""
     return "_" in model_str and len(model_str) > 20
 
 
@@ -124,7 +120,7 @@ def _is_agent_id(model_str: str) -> bool:
 async def create_chat_completion(request: ChatCompletionRequest):
     if not request.stream:
         raise HTTPException(status_code=501, detail="Only streaming responses are supported. Set 'stream=true'")
-    
+
     # Check if this is a clarification request for an existing agent
     if (
         request.model
@@ -134,10 +130,10 @@ async def create_chat_completion(request: ChatCompletionRequest):
         and agents_storage[request.model]._context.state == AgentStatesEnum.WAITING_FOR_CLARIFICATION
     ):
         return await provide_clarification(request.model, request)
-    
+
     try:
         task = extract_user_content_from_messages(request.messages)
-        
+
         # Determine agent model type
         agent_model = request.model
         if isinstance(agent_model, str) and _is_agent_id(agent_model):
@@ -151,8 +147,8 @@ async def create_chat_completion(request: ChatCompletionRequest):
                 agent_model = AgentModel(agent_model)
             except ValueError:
                 raise HTTPException(
-                    status_code=400, 
-                    detail=f"Invalid model '{agent_model}'. Available models: {[m.value for m in AgentModel]}"
+                    status_code=400,
+                    detail=f"Invalid model '{agent_model}'. Available models: {[m.value for m in AgentModel]}",
                 )
 
         # Create agent using mapping

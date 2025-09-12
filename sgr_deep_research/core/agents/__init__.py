@@ -10,6 +10,6 @@ __all__ = [
     "BaseAgent",
     "SGRResearchAgent",
     "SGRToolCallingResearchAgent",
-    "SGRAutoToolCallingResearchAgent", 
+    "SGRAutoToolCallingResearchAgent",
     "ToolCallingResearchAgent",
 ]

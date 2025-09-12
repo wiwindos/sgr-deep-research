@@ -13,7 +13,7 @@ from sgr_deep_research.core.agents.tools_agent import ToolCallingResearchAgent
 
 class AgentModel(str, Enum):
     """Available agent models for chat completion."""
-    
+
     SGR_AGENT = "sgr-agent"
     SGR_TOOLS_AGENT = "sgr-tools-agent"
     SGR_AUTO_TOOLS_AGENT = "sgr-auto-tools-agent"
@@ -40,9 +40,9 @@ class ChatCompletionRequest(BaseModel):
     """Запрос на создание chat completion."""
 
     model: AgentModel | str | None = Field(
-        default=AgentModel.SGR_AGENT, 
-        description="Тип агента или идентификатор существующего агента", 
-        example="sgr-agent"
+        default=AgentModel.SGR_AGENT,
+        description="Тип агента или идентификатор существующего агента",
+        example="sgr-agent",
     )
     messages: List[ChatMessage] = Field(description="Список сообщений")
     stream: bool = Field(default=True, description="Включить потоковый режим")
