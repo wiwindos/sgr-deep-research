@@ -1,11 +1,11 @@
 from sgr_deep_research.core.tools.base import (
     AdaptPlanTool,
     ClarificationTool,
+    CompletionTool,
     GeneratePlanTool,
     NextStepToolsBuilder,
     NextStepToolStub,
     ReasoningTool,
-    ResearchCompletionTool,
 )
 from sgr_deep_research.core.tools.research import (
     CreateReportTool,
@@ -19,7 +19,7 @@ __all__ = [
     "WebSearchTool",
     "AdaptPlanTool",
     "CreateReportTool",
-    "ResearchCompletionTool",
+    "CompletionTool",
     "ReasoningTool",
     "NextStepToolStub",
     "NextStepToolsBuilder",

@@ -13,9 +13,9 @@ from sgr_deep_research.core.prompts import PromptLoader
 from sgr_deep_research.core.stream import OpenAIStreamingGenerator
 from sgr_deep_research.core.tools import (
     ClarificationTool,
+    CompletionTool,
     NextStepToolsBuilder,
     NextStepToolStub,
-    ResearchCompletionTool,
     WebSearchTool,
 )
 from sgr_deep_research.core.tools.base import BaseTool, ReasoningTool, system_agent_tools
@@ -34,7 +34,8 @@ logger = logging.getLogger(__name__)
 
 
 class SGRResearchAgent:
-    """Agent for deep research tasks using SGR framework"""
+    """Agent for deep research tasks using SGR framework."""
+
     def __init__(
         self,
         task: str,
@@ -70,7 +71,7 @@ class SGRResearchAgent:
         if self._context.iteration >= self.max_iterations:
             tools = [
                 CreateReportTool,
-                ResearchCompletionTool,
+                CompletionTool,
             ]
         if self._context.clarifications_used >= self.max_clarifications:
             tools -= {
@@ -234,15 +235,3 @@ class SGRResearchAgent:
         finally:
             self.streaming_generator.finish()
             self._save_agent_log()
-
-
-async def main():
-    # agent = SGRResearchAgent(task="Research the current state of Tesla's Full Self-Driving technology in 2025. I need to understand if Tesla has achieved Level 5 autonomous driving as Elon Musk promised it would be ready by 2024, and whether regulatory approval has been granted worldwide.")
-    agent = SGRResearchAgent(task="Сравни цену на биткоин за 2023 и 2024 год")
-    await agent.execute()
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(main())

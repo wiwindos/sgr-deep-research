@@ -21,13 +21,13 @@ config = get_config()
 
 
 class BaseTool(BaseModel):
-    """Class to provide tool handling capabilities
-    result should be a string or dumped json"""
+    """Class to provide tool handling capabilities."""
 
     tool_name: ClassVar[str] = None
     description: ClassVar[str] = None
 
     def __call__(self, context: ResearchContext) -> str:
+        """Result should be a string or dumped json."""
         raise NotImplementedError("Execute method must be implemented by subclass")
 
     def __init_subclass__(cls, **kwargs):
@@ -85,7 +85,7 @@ class AdaptPlanTool(BaseTool):
         )
 
 
-class ResearchCompletionTool(BaseTool):
+class CompletionTool(BaseTool):
     """Complete research task."""
 
     reasoning: str = Field(description="Why research is now complete")
@@ -163,5 +163,5 @@ system_agent_tools = [
     ClarificationTool,
     GeneratePlanTool,
     AdaptPlanTool,
-    ResearchCompletionTool,
+    CompletionTool,
 ]

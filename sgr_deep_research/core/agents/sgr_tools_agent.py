@@ -14,8 +14,8 @@ from sgr_deep_research.core.prompts import PromptLoader
 from sgr_deep_research.core.stream import OpenAIStreamingGenerator
 from sgr_deep_research.core.tools import (
     ClarificationTool,
+    CompletionTool,
     NextStepToolStub,
-    ResearchCompletionTool,
     WebSearchTool,
 )
 from sgr_deep_research.core.tools.base import BaseTool, CreateReportTool, ReasoningTool, system_agent_tools
@@ -34,7 +34,9 @@ logger = logging.getLogger(__name__)
 
 
 class SGRToolCallingResearchAgent:
-    """Agent that uses OpenAI native function calling to select and execute tools based on SGR like reasoning scheme"""
+    """Agent that uses OpenAI native function calling to select and execute
+    tools based on SGR like reasoning scheme."""
+
     def __init__(
         self,
         task: str,
@@ -66,12 +68,12 @@ class SGRToolCallingResearchAgent:
         self.tool_choice: Literal["required"] = "required"
 
     def _prepare_tools(self) -> list[ChatCompletionFunctionToolParam]:
-        """Prepare tool classes with current context limits"""
+        """Prepare tool classes with current context limits."""
         tools = set(self.toolkit)
         if self._context.iteration >= self.max_iterations:
             tools = [
                 CreateReportTool,
-                ResearchCompletionTool,
+                CompletionTool,
             ]
         if self._context.clarifications_used >= self.max_clarifications:
             tools -= {
@@ -272,15 +274,3 @@ class SGRToolCallingResearchAgent:
         finally:
             self.streaming_generator.finish()
             self._save_agent_log()
-
-
-async def main():
-    # agent = SGRToolCallingResearchAgent(task="Research the current state of Tesla's Full Self-Driving technology in 2025. I need to understand if Tesla has achieved Level 5 autonomous driving as Elon Musk promised it would be ready by 2024, and whether regulatory approval has been granted worldwide.")
-    agent = SGRToolCallingResearchAgent(task="Сравни цену на биткоин за 2023 и 2024 год")
-    await agent.execute()
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(main())
