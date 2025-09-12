@@ -1,8 +1,32 @@
 """OpenAI-совместимые модели для API endpoints."""
 
+from enum import Enum
 from typing import Any, Dict, List, Literal
 
 from pydantic import BaseModel, Field
+
+from sgr_deep_research.core.agents.sgr_agent import SGRResearchAgent
+from sgr_deep_research.core.agents.sgr_auto_tools_agent import SGRAutoToolCallingResearchAgent
+from sgr_deep_research.core.agents.sgr_tools_agent import SGRToolCallingResearchAgent
+from sgr_deep_research.core.agents.tools_agent import ToolCallingResearchAgent
+
+
+class AgentModel(str, Enum):
+    """Available agent models for chat completion."""
+    
+    SGR_AGENT = "sgr-agent"
+    SGR_TOOLS_AGENT = "sgr-tools-agent"
+    SGR_AUTO_TOOLS_AGENT = "sgr-auto-tools-agent"
+    TOOLS_AGENT = "tools-agent"
+
+
+# Маппинг типов агентов на их классы
+AGENT_MODEL_MAPPING = {
+    AgentModel.SGR_AGENT: SGRResearchAgent,
+    AgentModel.SGR_TOOLS_AGENT: SGRToolCallingResearchAgent,
+    AgentModel.SGR_AUTO_TOOLS_AGENT: SGRAutoToolCallingResearchAgent,
+    AgentModel.TOOLS_AGENT: ToolCallingResearchAgent,
+}
 
 
 class ChatMessage(BaseModel):
@@ -15,8 +39,10 @@ class ChatMessage(BaseModel):
 class ChatCompletionRequest(BaseModel):
     """Запрос на создание chat completion."""
 
-    model: str | None = Field(
-        default=None, description="Идентификатор агента", example="sgr_agent_35702b10-4d4e-426f-9b33-b170032e37df"
+    model: AgentModel | str | None = Field(
+        default=AgentModel.SGR_AGENT, 
+        description="Тип агента или идентификатор существующего агента", 
+        example="sgr-agent"
     )
     messages: List[ChatMessage] = Field(description="Список сообщений")
     stream: bool = Field(default=True, description="Включить потоковый режим")
