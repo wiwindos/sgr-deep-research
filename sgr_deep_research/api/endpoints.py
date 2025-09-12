@@ -35,8 +35,8 @@ async def get_agent_state(agent_id: str):
     agent = agents_storage[agent_id]
 
     current_state_dict = None
-    if agent._context.current_state:
-        current_state_dict = agent._context.current_state.model_dump()
+    if agent._context.current_state_reasoning:
+        current_state_dict = agent._context.current_state_reasoning.model_dump()
 
     return AgentStateResponse(
         agent_id=agent.id,
@@ -103,7 +103,7 @@ async def create_chat_completion(request: ChatCompletionRequest):
     if (
         request.model
         and request.model in agents_storage
-        and agents_storage[request.model].state == AgentStatesEnum.WAITING_FOR_CLARIFICATION
+        and agents_storage[request.model]._context.state == AgentStatesEnum.WAITING_FOR_CLARIFICATION
     ):
         return await provide_clarification(request.model, request)
     try:

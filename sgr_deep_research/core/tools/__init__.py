@@ -1,7 +1,7 @@
 from sgr_deep_research.core.tools.base import (
     AdaptPlanTool,
+    AgentCompletionTool,
     ClarificationTool,
-    CompletionTool,
     GeneratePlanTool,
     NextStepToolsBuilder,
     NextStepToolStub,
@@ -19,7 +19,7 @@ __all__ = [
     "WebSearchTool",
     "AdaptPlanTool",
     "CreateReportTool",
-    "CompletionTool",
+    "AgentCompletionTool",
     "ReasoningTool",
     "NextStepToolStub",
     "NextStepToolsBuilder",

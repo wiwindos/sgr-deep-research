@@ -40,16 +40,13 @@ class AgentStatesEnum(str, Enum):
     ERROR = "error"
     FAILED = "failed"
 
-    @classmethod
-    @property
-    def FINISH_STATES(cls) -> set["AgentStatesEnum"]:
-        return {cls.COMPLETED, cls.FAILED, cls.ERROR}
+    FINISH_STATES = {COMPLETED, FAILED, ERROR}
 
 
 class ResearchContext(BaseModel):
     model_config = {"arbitrary_types_allowed": True}
 
-    current_state: Any = None  # ToDo: remove, deprecated
+    current_state_reasoning: Any = None
 
     state: AgentStatesEnum = Field(default=AgentStatesEnum.INITED, description="Current research state")
     iteration: int = Field(default=0, description="Current iteration number")

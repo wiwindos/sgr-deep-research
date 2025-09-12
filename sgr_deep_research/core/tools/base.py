@@ -45,8 +45,6 @@ class ClarificationTool(BaseTool):
     questions: list[str] = Field(description="3-5 specific clarifying questions", min_length=3, max_length=5)
 
     def __call__(self, context: ResearchContext) -> str:
-        # Mark clarification as used to prevent cycling
-        context.clarification_used = True
         return "\n".join(self.questions)
 
 
@@ -85,10 +83,8 @@ class AdaptPlanTool(BaseTool):
         )
 
 
-class CompletionTool(BaseTool):
-    """Complete research task."""
-
-    reasoning: str = Field(description="Why research is now complete")
+class AgentCompletionTool(BaseTool):
+    reasoning: str = Field(description="Why task is now complete")
     completed_steps: list[str] = Field(description="Summary of completed steps", min_length=1, max_length=5)
     status: Literal[AgentStatesEnum.COMPLETED, AgentStatesEnum.FAILED] = Field(description="Task completion status")
 
@@ -96,9 +92,6 @@ class CompletionTool(BaseTool):
         context.state = self.status
         return self.model_dump_json(
             indent=2,
-            exclude={
-                "reasoning",
-            },
         )
 
 
@@ -163,5 +156,6 @@ system_agent_tools = [
     ClarificationTool,
     GeneratePlanTool,
     AdaptPlanTool,
-    CompletionTool,
+    AgentCompletionTool,
+    ReasoningTool,
 ]
