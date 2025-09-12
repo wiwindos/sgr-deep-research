@@ -144,12 +144,4 @@ class SGRToolCallingResearchAgent(SGRResearchAgent):
         self.streaming_generator.add_tool_call(
             f"{self._context.iteration}-action", tool.tool_name, tool.model_dump_json()
         )
-                self.streaming_generator.add_chunk(f"{tool_call_result}\n")
-                self.conversation.append(
-                    {"role": "tool", "content": tool_call_result, "tool_call_id": str(self._context.iteration)}
-                )
-
-                if isinstance(result, ClarificationTool):
-                    logger.info("\n⏸️  Research paused - please answer questions")
-                    logger.info(tool_call_result)
         return tool
