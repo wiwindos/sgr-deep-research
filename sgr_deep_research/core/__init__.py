@@ -4,6 +4,7 @@ from sgr_deep_research.core.agents import (  # noqa: F403
     BaseAgent,
     SGRAutoToolCallingResearchAgent,
     SGRResearchAgent,
+    SGRSOToolCallingResearchAgent,
     SGRToolCallingResearchAgent,
     ToolCallingResearchAgent,
 )
@@ -19,6 +20,7 @@ __all__ = [
     "SGRToolCallingResearchAgent",
     "SGRAutoToolCallingResearchAgent",
     "ToolCallingResearchAgent",
+    "SGRSOToolCallingResearchAgent",
     # Models
     "AgentStatesEnum",
     "ResearchContext",

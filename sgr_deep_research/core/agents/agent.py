@@ -72,8 +72,8 @@ class BaseAgent:
 ###############################################
 🤖 LLM RESPONSE DEBUG:
    🧠 Reasoning Steps: {result.reasoning_steps}
-   📊 Current Situation: '{result.current_situation[:100]}...'
-   📋 Plan Status: '{result.plan_status[:100]}...'
+   📊 Current Situation: '{result.current_situation[:400]}...'
+   📋 Plan Status: '{result.plan_status[:400]}...'
    🔍 Searches Done: {self._context.searches_used}
    🔍 Clarifications Done: {self._context.clarifications_used}
    ✅ Enough Data: {result.enough_data}
