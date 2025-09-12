@@ -1,18 +1,9 @@
 import logging
 import uuid
-from typing import Literal, Type
-
-from openai import pydantic_function_tool
-from openai.types.chat import ChatCompletionFunctionToolParam
+from typing import Type
 
 from sgr_deep_research.core.agents.sgr_tools_agent import SGRToolCallingResearchAgent
-from sgr_deep_research.core.tools import (
-    AgentCompletionTool,
-    ClarificationTool,
-    WebSearchTool,
-)
-from sgr_deep_research.core.tools.base import BaseTool, ReasoningTool, system_agent_tools
-from sgr_deep_research.core.tools.research import CreateReportTool, research_agent_tools
+from sgr_deep_research.core.tools.base import BaseTool, ReasoningTool
 from sgr_deep_research.settings import get_config
 
 logging.basicConfig(
@@ -31,12 +22,12 @@ class SGRSOToolCallingResearchAgent(SGRToolCallingResearchAgent):
     tools based on SGR like reasoning scheme."""
 
     def __init__(
-            self,
-            task: str,
-            toolkit: list[Type[BaseTool]] | None = None,
-            max_clarifications: int = 3,
-            max_searches: int = 4,
-            max_iterations: int = 10,
+        self,
+        task: str,
+        toolkit: list[Type[BaseTool]] | None = None,
+        max_clarifications: int = 3,
+        max_searches: int = 4,
+        max_iterations: int = 10,
     ):
         super().__init__(
             task=task,
@@ -49,12 +40,12 @@ class SGRSOToolCallingResearchAgent(SGRToolCallingResearchAgent):
 
     async def _reasoning_phase(self) -> ReasoningTool:
         async with self.openai_client.chat.completions.stream(
-                model=config.openai.model,
-                messages=await self._prepare_context(),
-                max_tokens=config.openai.max_tokens,
-                temperature=config.openai.temperature,
-                tools=await self._prepare_tools(),
-                tool_choice={"type": "function", "function": {"name": ReasoningTool.tool_name}},
+            model=config.openai.model,
+            messages=await self._prepare_context(),
+            max_tokens=config.openai.max_tokens,
+            temperature=config.openai.temperature,
+            tools=await self._prepare_tools(),
+            tool_choice={"type": "function", "function": {"name": ReasoningTool.tool_name}},
         ) as stream:
             async for event in stream:
                 if event.type == "chunk":
@@ -64,11 +55,11 @@ class SGRSOToolCallingResearchAgent(SGRToolCallingResearchAgent):
                 (await stream.get_final_completion()).choices[0].message.tool_calls[0].function.parsed_arguments  #
             )
         async with self.openai_client.chat.completions.stream(
-                model=config.openai.model,
-                response_format=ReasoningTool,
-                messages=await self._prepare_context(),
-                max_tokens=config.openai.max_tokens,
-                temperature=config.openai.temperature,
+            model=config.openai.model,
+            response_format=ReasoningTool,
+            messages=await self._prepare_context(),
+            max_tokens=config.openai.max_tokens,
+            temperature=config.openai.temperature,
         ) as stream:
             async for event in stream:
                 if event.type == "chunk":
