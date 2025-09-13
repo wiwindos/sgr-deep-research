@@ -398,7 +398,7 @@ result = execute_plan(reasoning.actions)
 ### Architecture by Model Size
 
 | Model Size | Recommended Approach         | FC Accuracy | Why Choose This         |
-| ---------- | ---------------------------- | ----------- | ----------------------- |
+|------------|------------------------------|-------------|-------------------------|
 | **\<14B**  | Pure SGR + Structured Output | 15-25%      | FC practically unusable |
 | **14-32B** | SGR + FC hybrid              | 45-65%      | Best of both worlds     |
 | **32B+**   | Native FC with SGR fallback  | 85%+        | FC works reliably       |
@@ -406,7 +406,7 @@ result = execute_plan(reasoning.actions)
 ### When to Use SGR vs Function Calling
 
 | Use Case                        | Best Approach    | Why                                              |
-| ------------------------------- | ---------------- | ------------------------------------------------ |
+|---------------------------------|------------------|--------------------------------------------------|
 | **Data analysis & structuring** | SGR              | Controlled reasoning with visibility             |
 | **Document processing**         | SGR              | Step-by-step analysis with justification         |
 | **Local models (\<32B)**        | SGR              | Forces reasoning regardless of model limitations |
@@ -453,6 +453,10 @@ cp config.yaml.example config.yaml
 2. **Configure API keys:**
 
 ```yaml
+# SGR Research Agent - Configuration Template
+# Production-ready configuration for Schema-Guided Reasoning
+# Copy this file to config.yaml and fill in your API keys
+
 # OpenAI API Configuration
 openai:
   api_key: "your-openai-api-key-here"  # Required: Your OpenAI API key
@@ -460,10 +464,12 @@ openai:
   model: "gpt-4o-mini"                 # Model to use
   max_tokens: 8000                     # Maximum number of tokens
   temperature: 0.4                     # Generation temperature (0.0-1.0)
+  proxy: ""                            # Example: "socks5://127.0.0.1:1081" or "http://127.0.0.1:8080" or leave empty for no proxy
 
 # Tavily Search Configuration
 tavily:
   api_key: "your-tavily-api-key-here"  # Required: Your Tavily API key
+  api_base_url: "https://api.tavily.com"  # Tavily API base URL
 
 # Search Settings
 search:
@@ -479,12 +485,13 @@ scraping:
 execution:
   max_steps: 6                         # Maximum number of execution steps
   reports_dir: "reports"               # Directory for saving reports
+  logs_dir: "logs"                     # Directory for saving reports
 
 # Prompts Settings
 prompts:
-  prompts_dir: "prompts"           # Directory with prompts
+  prompts_dir: "prompts"               # Directory with prompts
   tool_function_prompt_file: "tool_function_prompt.txt"  # Tool function prompt file
-  system_prompt_file: "system_prompt.txt"               # System prompt file
+  system_prompt_file: "system_prompt.txt"  # System prompt file
 ```
 
 ### Server Configuration
@@ -493,6 +500,27 @@ prompts:
 # Custom host and port
 python sgr_deep_research --host 127.0.0.1 --port 8080
 ```
+
+## 🤖 Available Agent Models
+
+### Agent Types Overview
+
+| Agent Model            | Description                        |
+|------------------------|------------------------------------|
+| `sgr-agent`            | Pure SGR (Schema-Guided Reasoning) |
+| `sgr-tools-agent`      | SGR + Function Calling hybrid      |
+| `sgr-auto-tools-agent` | SGR + Auto Function Calling        |
+| `sgr-so-tools-agent`   | SGR + Structured Output            |
+| `tools-agent`          | Pure Function Calling              |
+
+### Models Endpoint
+
+Get the list of available agent models:
+
+```bash
+curl http://localhost:8010/v1/models
+```
+
 
 ## 📝 Reports
 
