@@ -8,11 +8,14 @@ from openai.types.chat import ChatCompletionFunctionToolParam
 from sgr_deep_research.core.agents.sgr_agent import SGRResearchAgent
 from sgr_deep_research.core.tools import (
     AgentCompletionTool,
+    BaseTool,
     ClarificationTool,
+    CreateReportTool,
+    ReasoningTool,
     WebSearchTool,
+    research_agent_tools,
+    system_agent_tools,
 )
-from sgr_deep_research.core.tools.base import BaseTool, ReasoningTool, system_agent_tools
-from sgr_deep_research.core.tools.research import CreateReportTool, research_agent_tools
 from sgr_deep_research.settings import get_config
 
 logging.basicConfig(

@@ -5,13 +5,16 @@ from typing import Type
 from sgr_deep_research.core.agents.base_agent import BaseAgent
 from sgr_deep_research.core.tools import (
     AgentCompletionTool,
+    BaseTool,
     ClarificationTool,
+    CreateReportTool,
     NextStepToolsBuilder,
     NextStepToolStub,
+    ReasoningTool,
     WebSearchTool,
+    research_agent_tools,
+    system_agent_tools,
 )
-from sgr_deep_research.core.tools.base import BaseTool, ReasoningTool, system_agent_tools
-from sgr_deep_research.core.tools.research import CreateReportTool, research_agent_tools
 from sgr_deep_research.settings import get_config
 
 logging.basicConfig(
