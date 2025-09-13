@@ -6,10 +6,10 @@ Production-ready open-source system for automated research using Schema-Guided R
 
 ## 📊 Summary Table of Agents
 
-| Agent                   | SGR Implementation | ReasoningTool       | Tools                 | API Requests | Selection Mechanism |
-|-------------------------|--------------------|---------------------|-----------------------|--------------|---------------------|
+| Agent                   | SGR Implementation | ReasoningTool        | Tools                 | API Requests | Selection Mechanism |
+| ----------------------- | ------------------ | -------------------- | --------------------- | ------------ | ------------------- |
 | **1. SGR-Agent**        | Structured Output  | ❌ Built into schema | 6 basic               | 1            | SO Union Type       |
-| **2. FCAgent**          | ❌ Absent           | ❌ Absent            | 6 basic               | 1            | FC "required"       |
+| **2. FCAgent**          | ❌ Absent          | ❌ Absent            | 6 basic               | 1            | FC "required"       |
 | **3. HybridSGRAgent**   | FC Tool enforced   | ✅ First step FC     | 7 (6 + ReasoningTool) | 2            | FC → FC             |
 | **4. OptionalSGRAgent** | FC Tool optional   | ✅ At model’s choice | 7 (6 + ReasoningTool) | 1–2          | FC "auto"           |
 | **5. ReasoningFC_SO**   | FC → SO → FC auto  | ✅ FC enforced       | 7 (6 + ReasoningTool) | 3            | FC → SO → FC auto   |
@@ -408,7 +408,7 @@ result = execute_plan(reasoning.actions)
 ### Architecture by Model Size
 
 | Model Size | Recommended Approach         | FC Accuracy | Why Choose This         |
-|------------|------------------------------|-------------|-------------------------|
+| ---------- | ---------------------------- | ----------- | ----------------------- |
 | **\<14B**  | Pure SGR + Structured Output | 15-25%      | FC practically unusable |
 | **14-32B** | SGR + FC hybrid              | 45-65%      | Best of both worlds     |
 | **32B+**   | Native FC with SGR fallback  | 85%+        | FC works reliably       |
@@ -416,7 +416,7 @@ result = execute_plan(reasoning.actions)
 ### When to Use SGR vs Function Calling
 
 | Use Case                        | Best Approach    | Why                                              |
-|---------------------------------|------------------|--------------------------------------------------|
+| ------------------------------- | ---------------- | ------------------------------------------------ |
 | **Data analysis & structuring** | SGR              | Controlled reasoning with visibility             |
 | **Document processing**         | SGR              | Step-by-step analysis with justification         |
 | **Local models (\<32B)**        | SGR              | Forces reasoning regardless of model limitations |
@@ -516,7 +516,7 @@ python sgr_deep_research --host 127.0.0.1 --port 8080
 ### Agent Types Overview
 
 | Agent Model            | Description                        |
-|------------------------|------------------------------------|
+| ---------------------- | ---------------------------------- |
 | `sgr-agent`            | Pure SGR (Schema-Guided Reasoning) |
 | `sgr-tools-agent`      | SGR + Function Calling hybrid      |
 | `sgr-auto-tools-agent` | SGR + Auto Function Calling        |
@@ -530,7 +530,6 @@ Get the list of available agent models:
 ```bash
 curl http://localhost:8010/v1/models
 ```
-
 
 ## 📝 Reports
 
