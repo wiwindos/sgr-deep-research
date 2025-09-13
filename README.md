@@ -4,6 +4,16 @@ https://github.com/user-attachments/assets/a5e34116-7853-43c2-ba93-2db811b8584a
 
 Production-ready open-source system for automated research using Schema-Guided Reasoning (SGR). Features real-time streaming responses, OpenAI-compatible API, and comprehensive research capabilities with agent interruption support.
 
+## 📊 Summary Table of Agents
+
+| Agent                   | SGR Implementation | ReasoningTool       | Tools                 | API Requests | Selection Mechanism |
+|-------------------------|--------------------|---------------------|-----------------------|--------------|---------------------|
+| **1. SGR-Agent**        | Structured Output  | ❌ Built into schema | 6 basic               | 1            | SO Union Type       |
+| **2. FCAgent**          | ❌ Absent           | ❌ Absent            | 6 basic               | 1            | FC "required"       |
+| **3. HybridSGRAgent**   | FC Tool enforced   | ✅ First step FC     | 7 (6 + ReasoningTool) | 2            | FC → FC             |
+| **4. OptionalSGRAgent** | FC Tool optional   | ✅ At model’s choice | 7 (6 + ReasoningTool) | 1–2          | FC "auto"           |
+| **5. ReasoningFC_SO**   | FC → SO → FC auto  | ✅ FC enforced       | 7 (6 + ReasoningTool) | 3            | FC → SO → FC auto   |
+
 ## 👥 Open-Source Development Team
 
 This project is built by the community with pure enthusiasm as an open-source initiative:
