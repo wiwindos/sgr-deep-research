@@ -10,6 +10,16 @@ https://github.com/user-attachments/assets/a5e34116-7853-43c2-ba93-2db811b8584a
 
 Production-ready open-source system for automated research using Schema-Guided Reasoning (SGR). Features real-time streaming responses, OpenAI-compatible API, and comprehensive research capabilities with agent interruption support.
 
+## 📊 Summary Table of Agents
+
+| Agent                   | SGR Implementation | ReasoningTool        | Tools                 | API Requests | Selection Mechanism |
+| ----------------------- | ------------------ | -------------------- | --------------------- | ------------ | ------------------- |
+| **1. SGR-Agent**        | Structured Output  | ❌ Built into schema | 6 basic               | 1            | SO Union Type       |
+| **2. FCAgent**          | ❌ Absent          | ❌ Absent            | 6 basic               | 1            | FC "required"       |
+| **3. HybridSGRAgent**   | FC Tool enforced   | ✅ First step FC     | 7 (6 + ReasoningTool) | 2            | FC → FC             |
+| **4. OptionalSGRAgent** | FC Tool optional   | ✅ At model’s choice | 7 (6 + ReasoningTool) | 1–2          | FC "auto"           |
+| **5. ReasoningFC_SO**   | FC → SO → FC auto  | ✅ FC enforced       | 7 (6 + ReasoningTool) | 3            | FC → SO → FC auto   |
+
 ## 👥 Open-Source Development Team
 
 This project is built by the community with pure enthusiasm as an open-source initiative:
@@ -100,7 +110,7 @@ client = OpenAI(
 
 # Make research request
 response = client.chat.completions.create(
-    model="sgr-research",
+    model="sgr-agent",
     messages=[{"role": "user", "content": "Research BMW X6 2025 prices in Russia"}],
     stream=True,
     temperature=0.4,
@@ -125,7 +135,7 @@ client = OpenAI(base_url="http://localhost:8010/v1", api_key="dummy")
 # Step 1: Initial research request
 print("Starting research...")
 response = client.chat.completions.create(
-    model="sgr-research",
+    model="sgr-agent",
     messages=[{"role": "user", "content": "Research AI market trends"}],
     stream=True,
     temperature=0,
@@ -201,7 +211,7 @@ The system provides a fully OpenAI-compatible API with advanced agent interrupti
 curl -X POST "http://localhost:8010/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "sgr-research",
+    "model": "sgr-agent",
     "messages": [{"role": "user", "content": "Research BMW X6 2025 prices in Russia"}],
     "stream": true,
     "max_tokens": 1500,
@@ -219,7 +229,7 @@ When the agent needs clarification, it returns a unique agent ID in the streamin
 curl -X POST "http://localhost:8010/v1/chat/completions" \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "sgr-research",
+    "model": "sgr-agent",
     "messages": [{"role": "user", "content": "Research AI market trends"}],
     "stream": true,
     "max_tokens": 1500,
@@ -299,7 +309,7 @@ sequenceDiagram
 
     Note over Client, Tools: SGR Deep Research - Agent Workflow
 
-    Client->>API: POST /v1/chat/completions<br/>{"model": "sgr-research", "messages": [...]}
+    Client->>API: POST /v1/chat/completions<br/>{"model": "sgr-agent", "messages": [...]}
 
     API->>Agent: Create new SGR Agent<br/>with unique ID
     Note over Agent: State: INITED
@@ -459,6 +469,10 @@ cp config.yaml.example config.yaml
 2. **Configure API keys:**
 
 ```yaml
+# SGR Research Agent - Configuration Template
+# Production-ready configuration for Schema-Guided Reasoning
+# Copy this file to config.yaml and fill in your API keys
+
 # OpenAI API Configuration
 openai:
   api_key: "your-openai-api-key-here"  # Required: Your OpenAI API key
@@ -466,10 +480,12 @@ openai:
   model: "gpt-4o-mini"                 # Model to use
   max_tokens: 8000                     # Maximum number of tokens
   temperature: 0.4                     # Generation temperature (0.0-1.0)
+  proxy: ""                            # Example: "socks5://127.0.0.1:1081" or "http://127.0.0.1:8080" or leave empty for no proxy
 
 # Tavily Search Configuration
 tavily:
   api_key: "your-tavily-api-key-here"  # Required: Your Tavily API key
+  api_base_url: "https://api.tavily.com"  # Tavily API base URL
 
 # Search Settings
 search:
@@ -485,12 +501,13 @@ scraping:
 execution:
   max_steps: 6                         # Maximum number of execution steps
   reports_dir: "reports"               # Directory for saving reports
+  logs_dir: "logs"                     # Directory for saving reports
 
 # Prompts Settings
 prompts:
-  prompts_dir: "prompts"           # Directory with prompts
+  prompts_dir: "prompts"               # Directory with prompts
   tool_function_prompt_file: "tool_function_prompt.txt"  # Tool function prompt file
-  system_prompt_file: "system_prompt.txt"               # System prompt file
+  system_prompt_file: "system_prompt.txt"  # System prompt file
 ```
 
 ### Server Configuration
@@ -498,6 +515,26 @@ prompts:
 ```bash
 # Custom host and port
 python sgr_deep_research --host 127.0.0.1 --port 8080
+```
+
+## 🤖 Available Agent Models
+
+### Agent Types Overview
+
+| Agent Model            | Description                        |
+| ---------------------- | ---------------------------------- |
+| `sgr-agent`            | Pure SGR (Schema-Guided Reasoning) |
+| `sgr-tools-agent`      | SGR + Function Calling hybrid      |
+| `sgr-auto-tools-agent` | SGR + Auto Function Calling        |
+| `sgr-so-tools-agent`   | SGR + Structured Output            |
+| `tools-agent`          | Pure Function Calling              |
+
+### Models Endpoint
+
+Get the list of available agent models:
+
+```bash
+curl http://localhost:8010/v1/models
 ```
 
 ## 📝 Reports

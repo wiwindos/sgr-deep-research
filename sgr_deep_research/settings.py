@@ -1,6 +1,6 @@
-"""Модуль настроек приложения с использованием Pydantic и EnvYAML.
+"""Application settings module using Pydantic and EnvYAML.
 
-Загружает конфигурацию из YAML файла с поддержкой переменных окружения.
+Loads configuration from YAML file with environment variables support.
 """
 
 import os
@@ -12,69 +12,69 @@ from pydantic import BaseModel, Field
 
 
 class OpenAIConfig(BaseModel):
-    """Настройки OpenAI API."""
+    """OpenAI API settings."""
 
-    api_key: str = Field(description="API ключ")
-    base_url: str = Field(default="https://api.openai.com/v1", description="Базовый URL")
-    model: str = Field(default="gpt-4o-mini", description="Модель для использования")
-    max_tokens: int = Field(default=8000, description="Максимальное количество токенов")
-    temperature: float = Field(default=0.4, ge=0.0, le=1.0, description="Температура генерации")
+    api_key: str = Field(description="API key")
+    base_url: str = Field(default="https://api.openai.com/v1", description="Base URL")
+    model: str = Field(default="gpt-4o-mini", description="Model to use")
+    max_tokens: int = Field(default=8000, description="Maximum number of tokens")
+    temperature: float = Field(default=0.4, ge=0.0, le=1.0, description="Generation temperature")
     proxy: str = Field(default="", description="Proxy URL (e.g., socks5://127.0.0.1:1081 or http://127.0.0.1:8080)")
 
 
 class TavilyConfig(BaseModel):
-    """Настройки Tavily Search API."""
+    """Tavily Search API settings."""
 
-    api_key: str = Field(description="Tavily API ключ")
+    api_key: str = Field(description="Tavily API key")
+    api_base_url: str = Field(default="https://api.tavily.com", description="Tavily API base URL")
 
 
 class SearchConfig(BaseModel):
-    """Настройки поиска."""
+    """Search settings."""
 
-    max_results: int = Field(default=10, ge=1, description="Максимальное количество результатов поиска")
+    max_results: int = Field(default=10, ge=1, description="Maximum number of search results")
 
 
 class ScrapingConfig(BaseModel):
-    """Настройки скрепинга веб-страниц."""
+    """Web scraping settings."""
 
-    enabled: bool = Field(default=False, description="Включить скрепинг полного текста")
-    max_pages: int = Field(default=5, gt=0, description="Максимум страниц для скрепинга")
-    content_limit: int = Field(default=1500, gt=0, description="Лимит символов контента на источник")
+    enabled: bool = Field(default=False, description="Enable full text scraping")
+    max_pages: int = Field(default=5, gt=0, description="Maximum pages to scrape")
+    content_limit: int = Field(default=1500, gt=0, description="Content character limit per source")
 
 
 class PromptsConfig(BaseModel):
-    """Настройки промптов."""
+    """Prompts settings."""
 
-    prompts_dir: str = Field(default="prompts", description="Директория с промптами")
-    tool_function_prompt_file: str = Field(
-        default="tool_function_prompt.txt", description="Файл промпта для функций инструментов"
-    )
-    system_prompt_file: str = Field(default="system_prompt.txt", description="Файл системного промпта")
+    prompts_dir: str = Field(default="prompts", description="Directory with prompts")
+    tool_function_prompt_file: str = Field(default="tool_function_prompt.txt", description="Tool functions prompt file")
+    system_prompt_file: str = Field(default="system_prompt.txt", description="System prompt file")
 
 
 class ExecutionConfig(BaseModel):
-    """Настройки выполнения приложения."""
+    """Application execution settings."""
 
-    max_steps: int = Field(default=6, gt=0, description="Максимальное количество шагов выполнения")
-    reports_dir: str = Field(default="reports", description="Директория для сохранения отчетов")
+    max_steps: int = Field(default=6, gt=0, description="Maximum number of execution steps")
+    reports_dir: str = Field(default="reports", description="Directory for saving reports")
+    logs_dir: str = Field(default="logs", description="Directory for saving bot logs")
 
 
 class AppConfig(BaseModel):
-    """Главная конфигурация приложения."""
+    """Main application configuration."""
 
-    openai: OpenAIConfig = Field(description="Настройки OpenAI")
-    tavily: TavilyConfig = Field(description="Настройки Tavily")
-    search: SearchConfig = Field(default_factory=SearchConfig, description="Настройки поиска")
-    scraping: ScrapingConfig = Field(default_factory=ScrapingConfig, description="Настройки скрепинга")
-    execution: ExecutionConfig = Field(default_factory=ExecutionConfig, description="Настройки выполнения")
-    prompts: PromptsConfig = Field(default_factory=PromptsConfig, description="Настройки промптов")
+    openai: OpenAIConfig = Field(description="OpenAI settings")
+    tavily: TavilyConfig = Field(description="Tavily settings")
+    search: SearchConfig = Field(default_factory=SearchConfig, description="Search settings")
+    scraping: ScrapingConfig = Field(default_factory=ScrapingConfig, description="Scraping settings")
+    execution: ExecutionConfig = Field(default_factory=ExecutionConfig, description="Execution settings")
+    prompts: PromptsConfig = Field(default_factory=PromptsConfig, description="Prompts settings")
 
 
 class ServerConfig(BaseModel):
-    """Конфигурация сервера."""
+    """Server configuration."""
 
-    host: str = Field(default="0.0.0.0", description="Хост для прослушивания")
-    port: int = Field(default=8010, gt=0, le=65535, description="Порт для прослушивания")
+    host: str = Field(default="0.0.0.0", description="Host to listen on")
+    port: int = Field(default=8010, gt=0, le=65535, description="Port to listen on")
 
 
 @cache

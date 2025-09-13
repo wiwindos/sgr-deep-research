@@ -1,69 +1,100 @@
-"""OpenAI-совместимые модели для API endpoints."""
+"""OpenAI-compatible models for API endpoints."""
 
+from enum import Enum
 from typing import Any, Dict, List, Literal
 
 from pydantic import BaseModel, Field
 
+from sgr_deep_research.core.agents import (
+    SGRAutoToolCallingResearchAgent,
+    SGRResearchAgent,
+    SGRSOToolCallingResearchAgent,
+    SGRToolCallingResearchAgent,
+    ToolCallingResearchAgent,
+)
+
+
+class AgentModel(str, Enum):
+    """Available agent models for chat completion."""
+
+    SGR_AGENT = "sgr-agent"
+    SGR_TOOLS_AGENT = "sgr-tools-agent"
+    SGR_AUTO_TOOLS_AGENT = "sgr-auto-tools-agent"
+    SGR_SO_TOOLS_AGENT = "sgr-so-tools-agent"
+    TOOLS_AGENT = "tools-agent"
+
+
+# Mapping of agent types to their classes
+AGENT_MODEL_MAPPING = {
+    AgentModel.SGR_AGENT: SGRResearchAgent,
+    AgentModel.SGR_TOOLS_AGENT: SGRToolCallingResearchAgent,
+    AgentModel.SGR_AUTO_TOOLS_AGENT: SGRAutoToolCallingResearchAgent,
+    AgentModel.SGR_SO_TOOLS_AGENT: SGRSOToolCallingResearchAgent,
+    AgentModel.TOOLS_AGENT: ToolCallingResearchAgent,
+}
+
 
 class ChatMessage(BaseModel):
-    """Сообщение в чате."""
+    """Chat message."""
 
-    role: Literal["system", "user", "assistant", "tool"] = Field(default="user", description="Роль отправителя")
-    content: str = Field(description="Содержимое сообщения")
+    role: Literal["system", "user", "assistant", "tool"] = Field(default="user", description="Sender role")
+    content: str = Field(description="Message content")
 
 
 class ChatCompletionRequest(BaseModel):
-    """Запрос на создание chat completion."""
+    """Request for creating chat completion."""
 
     model: str | None = Field(
-        default=None, description="Идентификатор агента", example="sgr_agent_35702b10-4d4e-426f-9b33-b170032e37df"
+        default=AgentModel.SGR_AGENT,
+        description="Agent type or existing agent identifier",
+        example="sgr-agent",
     )
-    messages: List[ChatMessage] = Field(description="Список сообщений")
-    stream: bool = Field(default=True, description="Включить потоковый режим")
-    max_tokens: int | None = Field(default=1500, description="Максимальное количество токенов")
-    temperature: float | None = Field(default=0, description="Температура генерации")
+    messages: List[ChatMessage] = Field(description="List of messages")
+    stream: bool = Field(default=True, description="Enable streaming mode")
+    max_tokens: int | None = Field(default=1500, description="Maximum number of tokens")
+    temperature: float | None = Field(default=0, description="Generation temperature")
 
 
 class ChatCompletionChoice(BaseModel):
-    """Выбор в ответе chat completion."""
+    """Choice in chat completion response."""
 
-    index: int = Field(description="Индекс выбора")
-    message: ChatMessage = Field(description="Сообщение ответа")
-    finish_reason: str | None = Field(description="Причина завершения")
+    index: int = Field(description="Choice index")
+    message: ChatMessage = Field(description="Response message")
+    finish_reason: str | None = Field(description="Finish reason")
 
 
 class ChatCompletionResponse(BaseModel):
-    """Ответ chat completion (не потоковый)."""
+    """Chat completion response (non-streaming)."""
 
-    id: str = Field(description="ID ответа")
+    id: str = Field(description="Response ID")
     object: Literal["chat.completion"] = "chat.completion"
-    created: int = Field(description="Время создания")
-    model: str = Field(description="Использованная модель")
-    choices: List[ChatCompletionChoice] = Field(description="Список выборов")
-    usage: Dict[str, int] | None = Field(default=None, description="Информация об использовании")
+    created: int = Field(description="Creation time")
+    model: str = Field(description="Model used")
+    choices: List[ChatCompletionChoice] = Field(description="List of choices")
+    usage: Dict[str, int] | None = Field(default=None, description="Usage information")
 
 
 class HealthResponse(BaseModel):
     status: Literal["healthy"] = "healthy"
-    service: str = Field(default="SGR Deep Research API", description="Название сервиса")
+    service: str = Field(default="SGR Deep Research API", description="Service name")
 
 
 class AgentStateResponse(BaseModel):
-    agent_id: str = Field(description="ID агента")
-    task: str = Field(description="Задача агента")
-    state: str = Field(description="Текущее состояние агента")
-    searches_used: int = Field(description="Количество выполненных поисков")
-    clarifications_used: int = Field(description="Количество запрошенных уточнений")
-    sources_count: int = Field(description="Количество найденных источников")
-    current_state: Dict[str, Any] | None = Field(default=None, description="Текущий шаг агента")
+    agent_id: str = Field(description="Agent ID")
+    task: str = Field(description="Agent task")
+    state: str = Field(description="Current agent state")
+    searches_used: int = Field(description="Number of searches performed")
+    clarifications_used: int = Field(description="Number of clarifications requested")
+    sources_count: int = Field(description="Number of sources found")
+    current_state: Dict[str, Any] | None = Field(default=None, description="Current agent step")
 
 
 class AgentListItem(BaseModel):
-    agent_id: str = Field(description="ID агента")
-    task: str = Field(description="Задача агента")
-    state: str = Field(description="Текущее состояние агента")
+    agent_id: str = Field(description="Agent ID")
+    task: str = Field(description="Agent task")
+    state: str = Field(description="Current agent state")
 
 
 class AgentListResponse(BaseModel):
-    agents: List[AgentListItem] = Field(description="Список агентов")
-    total: int = Field(description="Общее количество агентов")
+    agents: List[AgentListItem] = Field(description="List of agents")
+    total: int = Field(description="Total number of agents")

@@ -11,6 +11,8 @@ services:
     volumes:
       - ../sgr_deep_research:/app/sgr_deep_research:ro
       - ../config.yaml:/app/config.yaml:ro
+      -  ./logs:/app/logs
+      -  ./reports:/app/reports
 
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8010/health"]
