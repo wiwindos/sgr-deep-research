@@ -5,14 +5,19 @@ from typing import Literal, Type
 from openai import pydantic_function_tool
 from openai.types.chat import ChatCompletionFunctionToolParam
 
-from sgr_deep_research.core.agents.base_agent import BaseAgent
+from sgr_deep_research.core.agents import BaseAgent
 from sgr_deep_research.core.tools import (
     AgentCompletionTool,
     ClarificationTool,
     WebSearchTool,
+    # Base
+    BaseTool,
+    ReasoningTool,
+    system_agent_tools,
+    # Research
+    CreateReportTool,
+    research_agent_tools,
 )
-from sgr_deep_research.core.tools.base import BaseTool, ReasoningTool, system_agent_tools
-from sgr_deep_research.core.tools.research import CreateReportTool, research_agent_tools
 from sgr_deep_research.settings import get_config
 
 logging.basicConfig(
