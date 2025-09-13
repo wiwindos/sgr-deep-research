@@ -42,7 +42,7 @@ class ChatMessage(BaseModel):
 class ChatCompletionRequest(BaseModel):
     """Запрос на создание chat completion."""
 
-    model: AgentModel | str | None = Field(
+    model: str | None = Field(
         default=AgentModel.SGR_AGENT,
         description="Тип агента или идентификатор существующего агента",
         example="sgr-agent",
