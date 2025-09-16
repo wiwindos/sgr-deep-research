@@ -58,7 +58,7 @@ class BaseAgent:
             client_kwargs["http_client"] = httpx.AsyncClient(proxy=config.openai.proxy)
 
         self.openai_client = AsyncOpenAI(**client_kwargs)
-        self.streaming_generator = None  # Will be initialized in execute() with correct id
+        self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
 
     async def provide_clarification(self, clarifications: str):
         """Receive clarification from external source (e.g. user input)"""
@@ -162,7 +162,6 @@ class BaseAgent:
         self,
     ):
         logger.info(f"🚀 Starting agent {self.id} for task: '{self.task}'")
-        self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
         self.conversation.extend(
             [
                 {
