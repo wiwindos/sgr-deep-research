@@ -4,12 +4,11 @@ import logging
 import operator
 from abc import ABC
 from functools import reduce
-from typing import TYPE_CHECKING, ClassVar, Literal, Type, TypeVar
+from typing import TYPE_CHECKING, Annotated, ClassVar, Literal, Type, TypeVar
 
 from pydantic import BaseModel, Field, create_model
 
 from sgr_deep_research.core.models import AgentStatesEnum
-from sgr_deep_research.core.prompts import PromptLoader
 from sgr_deep_research.settings import get_config
 
 if TYPE_CHECKING:
@@ -37,7 +36,7 @@ class BaseTool(BaseModel):
 
 
 class ClarificationTool(BaseTool):
-    """Ask clarifying questions when facing ambiguous requests."""
+    """Ask clarifying questions when facing ambiguous request."""
 
     reasoning: str = Field(description="Why clarification is needed")
     unclear_terms: list[str] = Field(description="List of unclear terms or concepts", min_length=1, max_length=5)
@@ -49,7 +48,10 @@ class ClarificationTool(BaseTool):
 
 
 class GeneratePlanTool(BaseTool):
-    """Generate research plan based on clear user request."""
+    """Generate research plan.
+
+    Useful to split complex request into manageable steps.
+    """
 
     reasoning: str = Field(description="Justification for research approach")
     research_goal: str = Field(description="Primary research objective")
@@ -84,6 +86,9 @@ class AdaptPlanTool(BaseTool):
 
 
 class AgentCompletionTool(BaseTool):
+    """Finalize research task and complete agent execution after all steps are
+    completed."""
+
     reasoning: str = Field(description="Why task is now complete")
     completed_steps: list[str] = Field(description="Summary of completed steps", min_length=1, max_length=5)
     status: Literal[AgentStatesEnum.COMPLETED, AgentStatesEnum.FAILED] = Field(description="Task completion status")
@@ -128,7 +133,7 @@ class NextStepToolStub(ReasoningTool, ABC):
     """SGR Core - Determines next reasoning step with adaptive planning, choosing appropriate tool
     (!) Stub class for correct autocomplete. Use NextStepToolsBuilder"""
 
-    function: T = Field(description=PromptLoader.get_tool_function_prompt())
+    function: T = Field(description="Select the appropriate tool for the next step")
 
 
 class NextStepToolsBuilder:
@@ -136,19 +141,39 @@ class NextStepToolsBuilder:
     pydantic models level."""
 
     @classmethod
-    def _create_tool_types_union(cls, tools_list: list[Type[BaseTool]]):
-        if len(tools_list) == 1:
-            return tools_list[0]
+    def _create_discriminant_tool(cls, tool_class: Type[T]) -> Type[BaseModel]:
+        """Create discriminant version of tool with tool_name as instance
+        field."""
+        tool_name = tool_class.tool_name
 
-        return reduce(operator.or_, tools_list)
+        discriminant_tool = create_model(
+            f"{tool_class.__name__}WithDiscriminant",
+            __base__=tool_class,
+            tool_name_discriminator=(
+                Literal[tool_name],  # noqa
+                Field(default=tool_name, description="Tool name discriminator"),
+            ),
+        )
+        discriminant_tool.__call__ = tool_class.__call__
+
+        return discriminant_tool
 
     @classmethod
-    def build_NextStepTools(cls, tools_list: list[Type[BaseTool]]) -> Type[NextStepToolStub]:  # noqa
-        tool_prompt = PromptLoader.get_tool_function_prompt()
+    def _create_tool_types_union(cls, tools_list: list[Type[T]]) -> Type:
+        """Create discriminated union of tools."""
+        if len(tools_list) == 1:
+            return cls._create_discriminant_tool(tools_list[0])
+        # SGR inference struggles with choosing right schema otherwise
+        discriminant_tools = [cls._create_discriminant_tool(tool) for tool in tools_list]
+        union = reduce(operator.or_, discriminant_tools)
+        return Annotated[union, Field()]
+
+    @classmethod
+    def build_NextStepTools(cls, tools_list: list[Type[T]]) -> Type[NextStepToolStub]:  # noqa
         return create_model(
             "NextStepTools",
             __base__=NextStepToolStub,
-            function=(cls._create_tool_types_union(tools_list), Field(description=tool_prompt)),
+            function=(cls._create_tool_types_union(tools_list), Field()),
         )
 
 

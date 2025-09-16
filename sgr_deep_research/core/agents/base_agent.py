@@ -58,7 +58,7 @@ class BaseAgent:
             client_kwargs["http_client"] = httpx.AsyncClient(proxy=config.openai.proxy)
 
         self.openai_client = AsyncOpenAI(**client_kwargs)
-        self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
+        self.streaming_generator = None  # Will be initialized in execute() with correct id
 
     async def provide_clarification(self, clarifications: str):
         """Receive clarification from external source (e.g. user input)"""
@@ -96,9 +96,12 @@ class BaseAgent:
 
     def _log_tool_execution(self, tool: BaseTool, result: str):
         logger.info(
-            f"🛠️  Tool Execution Result:\n"
-            f"   🔧 Tool: {tool.tool_name}\n"
-            f"   📄 Result Preview: '{result[:3000]}...'\n"
+            f"""
+###############################################
+🛠️ TOOL EXECUTION DEBUG:
+   🔧 Tool Name: {tool.tool_name}
+   📋 Tool Model: {tool.model_dump_json(indent=2)}
+###############################################"""
         )
         self.log.append(
             {
@@ -114,7 +117,7 @@ class BaseAgent:
     def _save_agent_log(self):
         logs_dir = config.execution.logs_dir
         os.makedirs(logs_dir, exist_ok=True)
-        filepath = os.path.join(logs_dir, f"{self.id}-log.json")
+        filepath = os.path.join(logs_dir, f"{datetime.now().strftime('%Y%m%d-%H%M%S')}-{self.id}-log.json")
         agent_log = {
             "id": self.id,
             "task": self.task,
@@ -127,7 +130,9 @@ class BaseAgent:
     async def _prepare_context(self) -> list[dict]:
         """Prepare conversation context with system prompt."""
         system_prompt = PromptLoader.get_system_prompt(
-            user_request=self.task, sources=list(self._context.sources.values())
+            user_request=self.task,
+            sources=list(self._context.sources.values()),
+            available_tools=self.toolkit,
         )
         return [{"role": "system", "content": system_prompt}, *self.conversation]
 
@@ -157,6 +162,7 @@ class BaseAgent:
         self,
     ):
         logger.info(f"🚀 Starting agent {self.id} for task: '{self.task}'")
+        self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
         self.conversation.extend(
             [
                 {
@@ -188,5 +194,6 @@ class BaseAgent:
             self._context.state = AgentStatesEnum.FAILED
             traceback.print_exc()
         finally:
-            self.streaming_generator.finish()
+            if self.streaming_generator is not None:
+                self.streaming_generator.finish()
             self._save_agent_log()
