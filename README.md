@@ -8,7 +8,7 @@ Terminal CLI Video
 
 https://github.com/user-attachments/assets/a5e34116-7853-43c2-ba93-2db811b8584a
 
-Production-ready open-source system for automated research using Schema-Guided Reasoning (SGR). Features real-time streaming responses, OpenAI-compatible API, and comprehensive research capabilities with agent interruption support.
+Production-ready open-source system for automated research using Schema-Guided Reasoning (SGR). Features real-time streaming responses, OpenAI-compatible API, multi-provider LLM support (OpenAI & Mistral), and comprehensive research capabilities with agent interruption support.
 
 ## 📊 Summary Table of Agents
 
@@ -473,7 +473,10 @@ cp config.yaml.example config.yaml
 # Production-ready configuration for Schema-Guided Reasoning
 # Copy this file to config.yaml and fill in your API keys
 
-# OpenAI API Configuration
+# LLM Provider Selection
+llm_provider: "openai"                 # Options: "openai" or "mistral"
+
+# OpenAI API Configuration (used when llm_provider: openai)
 openai:
   api_key: "your-openai-api-key-here"  # Required: Your OpenAI API key
   base_url: ""                         # Optional: Alternative URL (e.g., for proxy LiteLLM/vLLM)
@@ -481,6 +484,15 @@ openai:
   max_tokens: 8000                     # Maximum number of tokens
   temperature: 0.4                     # Generation temperature (0.0-1.0)
   proxy: ""                            # Example: "socks5://127.0.0.1:1081" or "http://127.0.0.1:8080" or leave empty for no proxy
+
+# Mistral API Configuration (used when llm_provider: mistral)
+mistral:
+  api_key: "your-mistral-api-key-here"  # Required: Your Mistral API key
+  base_url: "https://api.mistral.ai"     # Optional: Custom Mistral endpoint
+  model: "mistral-large-latest"          # Model to use
+  max_tokens: 8000                       # Maximum number of tokens
+  temperature: 0.4                       # Generation temperature (0.0-1.0)
+  proxy: ""                              # Example: "socks5://127.0.0.1:1081" or leave empty
 
 # Tavily Search Configuration
 tavily:

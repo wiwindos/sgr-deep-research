@@ -2,7 +2,10 @@
 # Production-ready configuration for Schema-Guided Reasoning
 # Copy this file to config.yaml and fill in your API keys
 
-# OpenAI API Configuration
+# LLM Provider Selection
+llm_provider: "openai"                 # Options: "openai" or "mistral"
+
+# OpenAI API Configuration (used when llm_provider: openai)
 openai:
   api_key: "your-openai-api-key-here"  # Required: Your OpenAI API key
   base_url: ""                         # Optional: Alternative URL (e.g., for proxy LiteLLM/vLLM)
@@ -10,6 +13,15 @@ openai:
   max_tokens: 8000                     # Maximum number of tokens
   temperature: 0.4                     # Generation temperature (0.0-1.0)
   proxy: ""                            # Example: "socks5://127.0.0.1:1081" or "http://127.0.0.1:8080" or leave empty for no proxy
+
+# Mistral API Configuration (used when llm_provider: mistral)
+mistral:
+  api_key: "your-mistral-api-key-here"  # Required: Your Mistral API key
+  base_url: "https://api.mistral.ai"     # Optional: Custom Mistral endpoint
+  model: "mistral-large-latest"          # Model to use
+  max_tokens: 8000                       # Maximum number of tokens
+  temperature: 0.4                       # Generation temperature (0.0-1.0)
+  proxy: ""                              # Example: "socks5://127.0.0.1:1081" or leave empty
 
 # Tavily Search Configuration
 tavily:

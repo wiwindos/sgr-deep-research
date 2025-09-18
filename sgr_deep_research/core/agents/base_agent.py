@@ -4,12 +4,12 @@ import os
 import traceback
 import uuid
 from datetime import datetime
-from typing import Type
+from typing import Any, Dict, Type
 
-import httpx
-from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionFunctionToolParam
+from pydantic import BaseModel
 
+from sgr_deep_research.core.llm_client import LLMCompletionResult, MistralChatClient, OpenAIChatClient
 from sgr_deep_research.core.models import AgentStatesEnum, ResearchContext
 from sgr_deep_research.core.prompts import PromptLoader
 from sgr_deep_research.core.stream import OpenAIStreamingGenerator
@@ -20,7 +20,7 @@ from sgr_deep_research.core.tools import (
     ReasoningTool,
     system_agent_tools,
 )
-from sgr_deep_research.settings import get_config
+from sgr_deep_research.settings import LLMProvider, get_config
 
 logging.basicConfig(
     level=logging.INFO,
@@ -53,12 +53,24 @@ class BaseAgent:
         self.max_iterations = max_iterations
         self.max_clarifications = max_clarifications
 
-        client_kwargs = {"base_url": config.openai.base_url, "api_key": config.openai.api_key}
-        if config.openai.proxy.strip():
-            client_kwargs["http_client"] = httpx.AsyncClient(proxy=config.openai.proxy)
-
-        self.openai_client = AsyncOpenAI(**client_kwargs)
         self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
+
+        if config.llm_provider == LLMProvider.OPENAI:
+            if config.openai is None:  # pragma: no cover - validated earlier
+                raise ValueError("OpenAI configuration is required")
+            self._llm_client = OpenAIChatClient(config.openai)
+            provider_config = config.openai
+        elif config.llm_provider == LLMProvider.MISTRAL:
+            if config.mistral is None:  # pragma: no cover - validated earlier
+                raise ValueError("Mistral configuration is required")
+            self._llm_client = MistralChatClient(config.mistral)
+            provider_config = config.mistral
+        else:  # pragma: no cover - defensive programming
+            raise ValueError(f"Unsupported LLM provider: {config.llm_provider}")
+
+        self._llm_model = provider_config.model
+        self._llm_max_tokens = provider_config.max_tokens
+        self._llm_temperature = provider_config.temperature
 
     async def provide_clarification(self, clarifications: str):
         """Receive clarification from external source (e.g. user input)"""
@@ -135,6 +147,31 @@ class BaseAgent:
             available_tools=self.toolkit,
         )
         return [{"role": "system", "content": system_prompt}, *self.conversation]
+
+    async def _chat_completion(
+        self,
+        *,
+        messages: list[dict[str, Any]],
+        response_format: type[BaseModel] | None = None,
+        tools: Any | None = None,
+        tool_choice: Any | None = None,
+        tool_classes: Dict[str, Type[BaseTool]] | None = None,
+        temperature: float | None = None,
+        max_tokens: int | None = None,
+    ) -> LLMCompletionResult:
+        """Execute chat completion with streaming support across providers."""
+
+        return await self._llm_client.stream_chat_completion(
+            model=self._llm_model,
+            messages=messages,
+            max_tokens=max_tokens if max_tokens is not None else self._llm_max_tokens,
+            temperature=temperature if temperature is not None else self._llm_temperature,
+            response_format=response_format,
+            tools=tools,
+            tool_choice=tool_choice,
+            tool_classes=tool_classes,
+            on_text_chunk=self.streaming_generator.add_chunk,
+        )
 
     async def _prepare_tools(self) -> list[ChatCompletionFunctionToolParam]:
         """Prepare available tools for current agent state and progress."""
