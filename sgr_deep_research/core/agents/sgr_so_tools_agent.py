@@ -4,8 +4,6 @@ from typing import Type
 
 from sgr_deep_research.core.agents.sgr_tools_agent import SGRToolCallingResearchAgent
 from sgr_deep_research.core.tools import BaseTool, ReasoningTool
-from sgr_deep_research.settings import get_config
-
 logging.basicConfig(
     level=logging.INFO,
     encoding="utf-8",
@@ -13,7 +11,6 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 
-config = get_config()
 logger = logging.getLogger(__name__)
 
 
@@ -39,33 +36,25 @@ class SGRSOToolCallingResearchAgent(SGRToolCallingResearchAgent):
         self.id = f"sgr_so_tool_calling_agent_{uuid.uuid4()}"
 
     async def _reasoning_phase(self) -> ReasoningTool:
-        async with self.openai_client.chat.completions.stream(
-            model=config.openai.model,
+        tools = await self._prepare_tools()
+        first_response = await self._chat_completion(
             messages=await self._prepare_context(),
-            max_tokens=config.openai.max_tokens,
-            temperature=config.openai.temperature,
-            tools=await self._prepare_tools(),
+            tools=tools,
             tool_choice={"type": "function", "function": {"name": ReasoningTool.tool_name}},
-        ) as stream:
-            async for event in stream:
-                if event.type == "chunk":
-                    content = event.chunk.choices[0].delta.content
-                    self.streaming_generator.add_chunk(content)
-            reasoning: ReasoningTool = (  # noqa
-                (await stream.get_final_completion()).choices[0].message.tool_calls[0].function.parsed_arguments  #
-            )
-        async with self.openai_client.chat.completions.stream(
-            model=config.openai.model,
-            response_format=ReasoningTool,
+            tool_classes=self._tool_name_mapping,
+        )
+        if first_response.tool_calls:
+            reasoning_tool = first_response.tool_calls[0].parsed_arguments
+            if reasoning_tool is not None and not isinstance(reasoning_tool, ReasoningTool):
+                raise ValueError("Invalid reasoning tool returned by model")
+
+        structured_response = await self._chat_completion(
             messages=await self._prepare_context(),
-            max_tokens=config.openai.max_tokens,
-            temperature=config.openai.temperature,
-        ) as stream:
-            async for event in stream:
-                if event.type == "chunk":
-                    content = event.chunk.choices[0].delta.content
-                    self.streaming_generator.add_chunk(content)
-        reasoning: ReasoningTool = (await stream.get_final_completion()).choices[0].message.parsed
+            response_format=ReasoningTool,
+        )
+        reasoning = structured_response.parsed
+        if not isinstance(reasoning, ReasoningTool):
+            raise ValueError("Structured reasoning response does not match expected schema")
         tool_call_result = reasoning(self._context)
         self.conversation.append(
             {

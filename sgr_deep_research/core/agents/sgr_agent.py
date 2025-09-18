@@ -15,8 +15,6 @@ from sgr_deep_research.core.tools import (
     research_agent_tools,
     system_agent_tools,
 )
-from sgr_deep_research.settings import get_config
-
 logging.basicConfig(
     level=logging.INFO,
     encoding="utf-8",
@@ -24,7 +22,6 @@ logging.basicConfig(
     handlers=[logging.StreamHandler()],
 )
 
-config = get_config()
 logger = logging.getLogger(__name__)
 
 
@@ -75,18 +72,13 @@ class SGRResearchAgent(BaseAgent):
         return NextStepToolsBuilder.build_NextStepTools(list(tools))
 
     async def _reasoning_phase(self) -> NextStepToolStub:
-        async with self.openai_client.chat.completions.stream(
-            model=config.openai.model,
-            response_format=await self._prepare_tools(),
+        response = await self._chat_completion(
             messages=await self._prepare_context(),
-            max_tokens=config.openai.max_tokens,
-            temperature=config.openai.temperature,
-        ) as stream:
-            async for event in stream:
-                if event.type == "chunk":
-                    content = event.chunk.choices[0].delta.content
-                    self.streaming_generator.add_chunk(content)
-        reasoning: NextStepToolStub = (await stream.get_final_completion()).choices[0].message.parsed  # type: ignore
+            response_format=await self._prepare_tools(),
+        )
+        reasoning = response.parsed
+        if not isinstance(reasoning, NextStepToolStub):
+            raise ValueError("Model response does not match expected reasoning schema")
         # we are not fully sure if it should be in conversation or not. Looks like not necessary data
         # self.conversation.append({"role": "assistant", "content": reasoning.model_dump_json(exclude={"function"})})
         self._log_reasoning(reasoning)

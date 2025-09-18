@@ -4,11 +4,19 @@ Loads configuration from YAML file with environment variables support.
 """
 
 import os
+from enum import Enum
 from functools import cache
 from pathlib import Path
 
 from envyaml import EnvYAML
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+
+
+class LLMProvider(str, Enum):
+    """Supported LLM providers."""
+
+    OPENAI = "openai"
+    MISTRAL = "mistral"
 
 
 class OpenAIConfig(BaseModel):
@@ -17,6 +25,17 @@ class OpenAIConfig(BaseModel):
     api_key: str = Field(description="API key")
     base_url: str = Field(default="https://api.openai.com/v1", description="Base URL")
     model: str = Field(default="gpt-4o-mini", description="Model to use")
+    max_tokens: int = Field(default=8000, description="Maximum number of tokens")
+    temperature: float = Field(default=0.4, ge=0.0, le=1.0, description="Generation temperature")
+    proxy: str = Field(default="", description="Proxy URL (e.g., socks5://127.0.0.1:1081 or http://127.0.0.1:8080)")
+
+
+class MistralConfig(BaseModel):
+    """Mistral API settings."""
+
+    api_key: str = Field(description="API key")
+    base_url: str = Field(default="https://api.mistral.ai", description="Base URL")
+    model: str = Field(default="mistral-large-latest", description="Model to use")
     max_tokens: int = Field(default=8000, description="Maximum number of tokens")
     temperature: float = Field(default=0.4, ge=0.0, le=1.0, description="Generation temperature")
     proxy: str = Field(default="", description="Proxy URL (e.g., socks5://127.0.0.1:1081 or http://127.0.0.1:8080)")
@@ -61,12 +80,24 @@ class ExecutionConfig(BaseModel):
 class AppConfig(BaseModel):
     """Main application configuration."""
 
-    openai: OpenAIConfig = Field(description="OpenAI settings")
+    llm_provider: LLMProvider = Field(default=LLMProvider.OPENAI, description="LLM provider to use")
+    openai: OpenAIConfig | None = Field(default=None, description="OpenAI settings")
+    mistral: MistralConfig | None = Field(default=None, description="Mistral settings")
     tavily: TavilyConfig = Field(description="Tavily settings")
     search: SearchConfig = Field(default_factory=SearchConfig, description="Search settings")
     scraping: ScrapingConfig = Field(default_factory=ScrapingConfig, description="Scraping settings")
     execution: ExecutionConfig = Field(default_factory=ExecutionConfig, description="Execution settings")
     prompts: PromptsConfig = Field(default_factory=PromptsConfig, description="Prompts settings")
+
+    @model_validator(mode="after")
+    def _validate_provider_configuration(self):  # type: ignore[override]
+        """Ensure configuration for the selected LLM provider is present."""
+
+        if self.llm_provider == LLMProvider.OPENAI and self.openai is None:
+            raise ValueError("OpenAI configuration must be provided when llm_provider is 'openai'")
+        if self.llm_provider == LLMProvider.MISTRAL and self.mistral is None:
+            raise ValueError("Mistral configuration must be provided when llm_provider is 'mistral'")
+        return self
 
 
 class ServerConfig(BaseModel):
