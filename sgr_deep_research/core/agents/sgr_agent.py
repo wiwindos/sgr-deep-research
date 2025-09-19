@@ -3,6 +3,7 @@ import uuid
 from typing import Type
 
 from sgr_deep_research.core.agents.base_agent import BaseAgent
+from sgr_deep_research.core.llm import LLMCompletionRequest
 from sgr_deep_research.core.tools import (
     AgentCompletionTool,
     BaseTool,
@@ -75,18 +76,22 @@ class SGRResearchAgent(BaseAgent):
         return NextStepToolsBuilder.build_NextStepTools(list(tools))
 
     async def _reasoning_phase(self) -> NextStepToolStub:
-        async with self.openai_client.chat.completions.stream(
-            model=config.openai.model,
-            response_format=await self._prepare_tools(),
+        response_format = await self._prepare_tools()
+        request = LLMCompletionRequest(
             messages=await self._prepare_context(),
-            max_tokens=config.openai.max_tokens,
-            temperature=config.openai.temperature,
-        ) as stream:
-            async for event in stream:
-                if event.type == "chunk":
-                    content = event.chunk.choices[0].delta.content
-                    self.streaming_generator.add_chunk(content)
-        reasoning: NextStepToolStub = (await stream.get_final_completion()).choices[0].message.parsed  # type: ignore
+            response_model=response_format,
+            max_tokens=self.llm_client.default_max_tokens,
+            temperature=self.llm_client.default_temperature,
+            model=config.llm.resolved_model(config.openai, config.mistral),
+        )
+        async with self.llm_client.stream_chat_completion(request) as stream:
+            async for chunk in stream:
+                if chunk.content:
+                    self.streaming_generator.add_chunk(chunk.content)
+            result = await stream.get_final_response()
+        reasoning = result.parsed
+        if reasoning is None:
+            raise ValueError("Structured reasoning response is empty")
         # we are not fully sure if it should be in conversation or not. Looks like not necessary data
         # self.conversation.append({"role": "assistant", "content": reasoning.model_dump_json(exclude={"function"})})
         self._log_reasoning(reasoning)

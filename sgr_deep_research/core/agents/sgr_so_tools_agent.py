@@ -3,6 +3,7 @@ import uuid
 from typing import Type
 
 from sgr_deep_research.core.agents.sgr_tools_agent import SGRToolCallingResearchAgent
+from sgr_deep_research.core.llm import LLMCompletionRequest
 from sgr_deep_research.core.tools import BaseTool, ReasoningTool
 from sgr_deep_research.settings import get_config
 
@@ -39,33 +40,39 @@ class SGRSOToolCallingResearchAgent(SGRToolCallingResearchAgent):
         self.id = f"sgr_so_tool_calling_agent_{uuid.uuid4()}"
 
     async def _reasoning_phase(self) -> ReasoningTool:
-        async with self.openai_client.chat.completions.stream(
-            model=config.openai.model,
+        tool_request = LLMCompletionRequest(
             messages=await self._prepare_context(),
-            max_tokens=config.openai.max_tokens,
-            temperature=config.openai.temperature,
             tools=await self._prepare_tools(),
             tool_choice={"type": "function", "function": {"name": ReasoningTool.tool_name}},
-        ) as stream:
-            async for event in stream:
-                if event.type == "chunk":
-                    content = event.chunk.choices[0].delta.content
-                    self.streaming_generator.add_chunk(content)
-            reasoning: ReasoningTool = (  # noqa
-                (await stream.get_final_completion()).choices[0].message.tool_calls[0].function.parsed_arguments  #
-            )
-        async with self.openai_client.chat.completions.stream(
-            model=config.openai.model,
-            response_format=ReasoningTool,
+            max_tokens=self.llm_client.default_max_tokens,
+            temperature=self.llm_client.default_temperature,
+            model=config.llm.resolved_model(config.openai, config.mistral),
+        )
+        async with self.llm_client.stream_chat_completion(tool_request) as stream:
+            async for chunk in stream:
+                if chunk.content:
+                    self.streaming_generator.add_chunk(chunk.content)
+            tool_result = await stream.get_final_response()
+        if not tool_result.tool_calls:
+            raise ValueError("Reasoning stage did not return tool call")
+        if not isinstance(tool_result.tool_calls[0].parsed, ReasoningTool):
+            raise ValueError("Unexpected reasoning call payload")
+
+        structured_request = LLMCompletionRequest(
             messages=await self._prepare_context(),
-            max_tokens=config.openai.max_tokens,
-            temperature=config.openai.temperature,
-        ) as stream:
-            async for event in stream:
-                if event.type == "chunk":
-                    content = event.chunk.choices[0].delta.content
-                    self.streaming_generator.add_chunk(content)
-        reasoning: ReasoningTool = (await stream.get_final_completion()).choices[0].message.parsed
+            response_model=ReasoningTool,
+            max_tokens=self.llm_client.default_max_tokens,
+            temperature=self.llm_client.default_temperature,
+            model=config.llm.resolved_model(config.openai, config.mistral),
+        )
+        async with self.llm_client.stream_chat_completion(structured_request) as stream:
+            async for chunk in stream:
+                if chunk.content:
+                    self.streaming_generator.add_chunk(chunk.content)
+            structured_result = await stream.get_final_response()
+        reasoning = structured_result.parsed
+        if not isinstance(reasoning, ReasoningTool):
+            raise ValueError("Structured reasoning response invalid")
         tool_call_result = reasoning(self._context)
         self.conversation.append(
             {

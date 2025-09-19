@@ -12,9 +12,11 @@ from sgr_deep_research.api.models import (
     AgentStateResponse,
     ChatCompletionRequest,
     HealthResponse,
+    allowed_agent_models,
 )
 from sgr_deep_research.core.agents import BaseAgent
 from sgr_deep_research.core.models import AgentStatesEnum
+from sgr_deep_research.settings import get_config
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +24,7 @@ app = FastAPI(title="SGR Deep Research API", version="1.0.0")
 
 # ToDo: better to move to a separate service
 agents_storage: dict[str, BaseAgent] = {}
+config = get_config()
 
 
 @app.get("/health", response_model=HealthResponse)
@@ -63,10 +66,11 @@ async def get_agents_list():
 @app.get("/v1/models")
 async def get_available_models():
     """Get list of available agent models."""
+    models = allowed_agent_models(config.llm.provider)
     return {
         "data": [
             {"id": model.value, "object": "model", "created": 1234567890, "owned_by": "sgr-deep-research"}
-            for model in AgentModel
+            for model in models
         ],
         "object": "list",
     }
@@ -151,6 +155,12 @@ async def create_chat_completion(request: ChatCompletionRequest):
                     detail=f"Invalid model '{agent_model}'. Available models: {[m.value for m in AgentModel]}",
                 )
 
+        available_models = {model.value for model in allowed_agent_models(config.llm.provider)}
+        if agent_model.value not in available_models:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Model '{agent_model.value}' is not available for provider {config.llm.provider.value}",
+            )
         # Create agent using mapping
         agent_class = AGENT_MODEL_MAPPING[agent_model]
         agent = agent_class(task=task)

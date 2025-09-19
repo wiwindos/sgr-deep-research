@@ -6,8 +6,6 @@ import uuid
 from datetime import datetime
 from typing import Type
 
-import httpx
-from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionFunctionToolParam
 
 from sgr_deep_research.core.models import AgentStatesEnum, ResearchContext
@@ -53,11 +51,9 @@ class BaseAgent:
         self.max_iterations = max_iterations
         self.max_clarifications = max_clarifications
 
-        client_kwargs = {"base_url": config.openai.base_url, "api_key": config.openai.api_key}
-        if config.openai.proxy.strip():
-            client_kwargs["http_client"] = httpx.AsyncClient(proxy=config.openai.proxy)
+        from sgr_deep_research.core.llm import create_llm_client
 
-        self.openai_client = AsyncOpenAI(**client_kwargs)
+        self.llm_client = create_llm_client(config)
         self.streaming_generator = OpenAIStreamingGenerator(model=self.id)
 
     async def provide_clarification(self, clarifications: str):

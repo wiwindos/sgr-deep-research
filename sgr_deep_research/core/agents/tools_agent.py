@@ -6,6 +6,7 @@ from openai import pydantic_function_tool
 from openai.types.chat import ChatCompletionFunctionToolParam
 
 from sgr_deep_research.core.agents.base_agent import BaseAgent
+from sgr_deep_research.core.llm import LLMCompletionRequest
 from sgr_deep_research.core.tools import (
     AgentCompletionTool,
     BaseTool,
@@ -78,19 +79,22 @@ class ToolCallingResearchAgent(BaseAgent):
         return None
 
     async def _select_action_phase(self, reasoning=None) -> BaseTool:
-        async with self.openai_client.chat.completions.stream(
-            model=config.openai.model,
+        request = LLMCompletionRequest(
             messages=await self._prepare_context(),
-            max_tokens=config.openai.max_tokens,
-            temperature=config.openai.temperature,
             tools=await self._prepare_tools(),
             tool_choice=self.tool_choice,
-        ) as stream:
-            async for event in stream:
-                if event.type == "chunk":
-                    content = event.chunk.choices[0].delta.content
-                    self.streaming_generator.add_chunk(content)
-        tool = (await stream.get_final_completion()).choices[0].message.tool_calls[0].function.parsed_arguments
+            max_tokens=self.llm_client.default_max_tokens,
+            temperature=self.llm_client.default_temperature,
+            model=config.llm.resolved_model(config.openai, config.mistral),
+        )
+        async with self.llm_client.stream_chat_completion(request) as stream:
+            async for chunk in stream:
+                if chunk.content:
+                    self.streaming_generator.add_chunk(chunk.content)
+            result = await stream.get_final_response()
+        if not result.tool_calls:
+            raise ValueError("No tool call returned by provider")
+        tool = result.tool_calls[0].parsed
 
         if not isinstance(tool, BaseTool):
             raise ValueError("Selected tool is not a valid BaseTool instance")

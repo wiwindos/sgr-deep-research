@@ -12,6 +12,7 @@ from sgr_deep_research.core.agents import (
     SGRToolCallingResearchAgent,
     ToolCallingResearchAgent,
 )
+from sgr_deep_research.settings import LLMProvider
 
 
 class AgentModel(str, Enum):
@@ -98,3 +99,13 @@ class AgentListItem(BaseModel):
 class AgentListResponse(BaseModel):
     agents: List[AgentListItem] = Field(description="List of agents")
     total: int = Field(description="Total number of agents")
+# Models compatible with specific providers
+MISTRAL_SUPPORTED_MODELS = {AgentModel.SGR_AGENT}
+
+
+def allowed_agent_models(provider: LLMProvider) -> list[AgentModel]:
+    """Return list of models available for given provider."""
+
+    if provider == LLMProvider.MISTRAL:
+        return [model for model in AgentModel if model in MISTRAL_SUPPORTED_MODELS]
+    return list(AgentModel)

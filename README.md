@@ -473,14 +473,30 @@ cp config.yaml.example config.yaml
 # Production-ready configuration for Schema-Guided Reasoning
 # Copy this file to config.yaml and fill in your API keys
 
+# LLM Provider Selection
+llm:
+  provider: "openai"                   # Select LLM backend: "openai" or "mistral"
+  model_alias: ""                      # Optional override for default model id
+
 # OpenAI API Configuration
 openai:
   api_key: "your-openai-api-key-here"  # Required: Your OpenAI API key
-  base_url: ""                         # Optional: Alternative URL (e.g., for proxy LiteLLM/vLLM)
+  base_url: "https://api.openai.com/v1"  # Optional: Alternative URL (e.g., for proxy LiteLLM/vLLM)
   model: "gpt-4o-mini"                 # Model to use
   max_tokens: 8000                     # Maximum number of tokens
   temperature: 0.4                     # Generation temperature (0.0-1.0)
   proxy: ""                            # Example: "socks5://127.0.0.1:1081" or "http://127.0.0.1:8080" or leave empty for no proxy
+
+# Mistral API Configuration
+mistral:
+  api_key: "${MISTRAL_API_KEY}"        # Recommended: provide via environment variable
+  base_url: ""                         # Optional: override API base URL
+  model: "mistral-large-latest"        # Model with Custom Structured Output support
+  max_tokens: null                     # Optional: limit completion tokens (null uses provider defaults)
+  temperature: 0.4                     # Generation temperature (0.0-1.0)
+  so_mode: "native"                    # Structured output mode: native | json_schema | json_mode
+  strict: true                         # Fail immediately on invalid structured responses
+  allow_additional_properties: false   # Allow additional properties in generated schema
 
 # Tavily Search Configuration
 tavily:
@@ -516,6 +532,20 @@ prompts:
 # Custom host and port
 python sgr_deep_research --host 127.0.0.1 --port 8080
 ```
+
+### Mistral Setup
+
+The `llm.provider` switch controls which upstream API is used. When set to `mistral`:
+
+- Provide the API key either in `config.yaml` or via `MISTRAL_API_KEY` (and the other `MISTRAL_*` environment variables) – the
+  loader honours environment overrides for all structured output options.
+- Only models with [Custom Structured Output](https://docs.mistral.ai/api/) support are exposed through `/v1/models`. The defaul
+t is `mistral-large-latest` and other schema-incompatible agent models are hidden automatically.
+- Structured output requests first try native `chat.parse(...)`. On failure the client falls back to JSON Schema mode and then t
+o strict JSON mode with automatic soft parsing. Every retry is logged with `provider`, `model`, `so_mode`, `schema_name`, and `r
+etry_stage` fields to simplify debugging.
+- Native streaming is disabled for Structured Output responses. The server emits an emulated OpenAI-compatible SSE stream by chu
+nking the final JSON payload so existing clients continue to work unchanged.
 
 ## 🤖 Available Agent Models
 
