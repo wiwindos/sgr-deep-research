@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Iterable, List, Optional, Type, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, Type
 
 import httpx
 from openai import AsyncOpenAI
@@ -15,25 +16,31 @@ from sgr_deep_research.core.tools import BaseTool
 if TYPE_CHECKING:
     from openai.types.chat import ChatCompletion
     from openai.types.chat.chat_completion_message import ChatCompletionMessage
-    from openai.types.chat.chat_completion_message_tool_call import ChatCompletionMessageToolCall
-    from openai.types.chat.chat_completion_chunk import ChatCompletionChunk
+
     from sgr_deep_research.settings import MistralConfig, OpenAIConfig
 
 try:  # pragma: no cover - optional dependency imported lazily
     from mistralai.extra import response_format_from_pydantic_model
     from mistralai.models import CompletionEvent, UsageInfo
+    from mistralai.models.jsonschema import JSONSchema
+    from mistralai.models.responseformat import ResponseFormat
     from mistralai.sdk import Mistral
     from mistralai.types import UNSET, UNSET_SENTINEL
 except Exception:  # pragma: no cover - handled at runtime when mistralai is missing
     response_format_from_pydantic_model = None  # type: ignore
     CompletionEvent = None  # type: ignore
     UsageInfo = None  # type: ignore
+    JSONSchema = None  # type: ignore
+    ResponseFormat = None  # type: ignore
     Mistral = None  # type: ignore
     UNSET = object()  # type: ignore
     UNSET_SENTINEL = object()  # type: ignore
 
 
 StreamingCallback = Callable[[str], None]
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -108,6 +115,42 @@ def _build_tool_call_result(
             parsed = None
 
     return ToolCallResult(name=name, arguments=arguments_str, parsed_arguments=parsed, id=call_id)
+
+
+def _set_additional_properties(schema_node: Any) -> Any:
+    """Ensure JSON schema objects disallow additional properties recursively."""
+
+    if isinstance(schema_node, dict):
+        updated = {key: _set_additional_properties(value) for key, value in schema_node.items()}
+        if updated.get("type") == "object" and "additionalProperties" not in updated:
+            updated["additionalProperties"] = False
+        return updated
+    if isinstance(schema_node, list):
+        return [_set_additional_properties(item) for item in schema_node]
+    return schema_node
+
+
+def _build_mistral_response_format(model: type[BaseModel]):
+    """Create a response format payload compatible with the Mistral SDK."""
+
+    if response_format_from_pydantic_model is not None:
+        try:
+            return response_format_from_pydantic_model(model)
+        except ValueError as exc:  # pragma: no cover - depends on mistralai internals
+            logger.debug("Falling back to custom response format builder: %s", exc)
+
+    if JSONSchema is None or ResponseFormat is None:  # pragma: no cover - runtime guard
+        raise RuntimeError(
+            "Mistral response format helpers are unavailable. Ensure the 'mistralai' package is installed."
+        )
+
+    schema = _set_additional_properties(model.model_json_schema())
+    json_schema = JSONSchema.model_validate({
+        "name": model.__name__,
+        "schema": schema,
+        "strict": True,
+    })
+    return ResponseFormat(type="json_schema", json_schema=json_schema)
 
 
 class OpenAIChatClient:
@@ -204,7 +247,7 @@ class MistralChatClient:
     """Adapter around the official Mistral SDK."""
 
     def __init__(self, config: "MistralConfig"):
-        if Mistral is None or response_format_from_pydantic_model is None:  # pragma: no cover - runtime guard
+        if Mistral is None or JSONSchema is None or ResponseFormat is None:  # pragma: no cover - runtime guard
             raise RuntimeError(
                 "The 'mistralai' package is required for the Mistral provider. Install it to enable this option."
             )
@@ -234,7 +277,7 @@ class MistralChatClient:
     ) -> LLMCompletionResult:
         response_format_payload = None
         if response_format is not None:
-            response_format_payload = response_format_from_pydantic_model(response_format)
+            response_format_payload = _build_mistral_response_format(response_format)
 
         tools_payload = None
         if tools is not None:
